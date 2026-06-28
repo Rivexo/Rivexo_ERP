@@ -65,9 +65,10 @@ export function Sidebar({ role }: { role: UserRole }) {
   ];
 
   return (
-    <aside className="flex h-full w-64 flex-col gap-6 border-r bg-background p-4">
-      <div className="px-3 py-2">
-        <p className="text-lg font-bold">Rivexo OS</p>
+    <aside className="flex h-full w-64 flex-col gap-6 border-r bg-sidebar p-4">
+      <div className="flex items-center gap-2 px-3 py-2">
+        <img src="/logo/rivexo_horizontal.svg" alt="Rivexo" className="h-7 w-auto" />
+        <span className="text-xs font-semibold text-muted-foreground">OS</span>
       </div>
 
       <NavSection title="General" items={[{ href: "/", label: "Dashboard", icon: LayoutDashboard }]} />

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 620" width="1024" height="1024"><defs>
+<linearGradient id="gbp" x1="0" y1="0" x2="1" y2="0.4"><stop offset="0" stop-color="#3D5AE8"/><stop offset="1" stop-color="#7B45C2"/></linearGradient>
+<linearGradient id="gbpmid" x1="0" y1="0" x2="1" y2="0.4"><stop offset="0" stop-color="#5670EC"/><stop offset="1" stop-color="#8A63CE"/></linearGradient>
+<linearGradient id="gring" x1="0" y1="0.15" x2="1" y2="0.85"><stop offset="0" stop-color="#3D5AE8"/><stop offset="1" stop-color="#7B45C2"/></linearGradient>
+<linearGradient id="glav" x1="0.1" y1="0" x2="0.25" y2="1.05"><stop offset="0" stop-color="#B4B9EE"/><stop offset="1" stop-color="#E9EBFB"/></linearGradient>
+<filter id="soft" x="-30%" y="-30%" width="160%" height="170%"><feGaussianBlur stdDeviation="7"/></filter>
+</defs><path d="M23.57 264.63 A290.00 290.00 0 0 1 596.43 264.63" fill="none" stroke="url(#gring)" stroke-width="8.50" stroke-linecap="round"/>
+<path d="M596.43 355.37 A290.00 290.00 0 0 1 23.57 355.37" fill="none" stroke="url(#gring)" stroke-width="8.50" stroke-linecap="round"/>
+<path d="M274.93 228.11Q310.00 205.00 345.07 228.11L450.93 297.89Q486.00 321.00 450.93 344.11L345.07 413.89Q310.00 437.00 274.93 413.89L169.07 344.11Q134.00 321.00 169.07 297.89Z" fill="rgba(40,40,90,0.13)" filter="url(#soft)"/>
+<path d="M274.93 312.11Q310.00 289.00 345.07 312.11L450.93 381.89Q486.00 405.00 450.93 428.11L345.07 497.89Q310.00 521.00 274.93 497.89L169.07 428.11Q134.00 405.00 169.07 381.89Z" fill="url(#glav)"/>
+<path d="M274.93 217.11Q310.00 194.00 345.07 217.11L450.93 286.89Q486.00 310.00 450.93 333.11L345.07 402.89Q310.00 426.00 274.93 402.89L169.07 333.11Q134.00 310.00 169.07 286.89Z" fill="url(#gbpmid)"/>
+<path d="M274.93 134.11Q310.00 111.00 345.07 134.11L450.93 203.89Q486.00 227.00 450.93 250.11L345.07 319.89Q310.00 343.00 274.93 319.89L169.07 250.11Q134.00 227.00 169.07 203.89Z" fill="rgba(40,40,90,0.18)" filter="url(#soft)"/>
+<path d="M274.93 122.11Q310.00 99.00 345.07 122.11L450.93 191.89Q486.00 215.00 450.93 238.11L345.07 307.89Q310.00 331.00 274.93 307.89L169.07 238.11Q134.00 215.00 169.07 191.89Z" fill="url(#gbp)"/>
+<circle cx="20.00" cy="310.00" r="16.00" fill="#3D5AE8"/>
+<circle cx="600.00" cy="310.00" r="16.00" fill="#7B45C2"/></svg>
