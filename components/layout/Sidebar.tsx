@@ -11,7 +11,18 @@ import {
   Tags,
   Users,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  Sidebar as SidebarRoot,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from "@/components/ui/sidebar";
 import { canManageSettings, canViewCrm, type UserRole } from "@/lib/permissions";
 
 type NavItem = {
@@ -20,33 +31,32 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
 };
 
-function NavLink({ item }: { item: NavItem }) {
+function NavMenu({ title, items }: { title: string; items: NavItem[] }) {
   const pathname = usePathname();
-  const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-  const Icon = item.icon;
 
   return (
-    <Link
-      href={item.href}
-      className={cn(
-        "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-        isActive ? "bg-secondary text-secondary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
-      )}
-    >
-      <Icon className="size-4" />
-      {item.label}
-    </Link>
-  );
-}
-
-function NavSection({ title, items }: { title: string; items: NavItem[] }) {
-  return (
-    <div className="space-y-1">
-      <p className="px-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">{title}</p>
-      {items.map((item) => (
-        <NavLink key={item.href} item={item} />
-      ))}
-    </div>
+    <SidebarGroup>
+      <SidebarGroupLabel>{title}</SidebarGroupLabel>
+      <SidebarGroupContent>
+        <SidebarMenu>
+          {items.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            return (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  render={<Link href={item.href} />}
+                  isActive={isActive}
+                  tooltip={item.label}
+                >
+                  <item.icon />
+                  <span>{item.label}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            );
+          })}
+        </SidebarMenu>
+      </SidebarGroupContent>
+    </SidebarGroup>
   );
 }
 
@@ -65,17 +75,34 @@ export function Sidebar({ role }: { role: UserRole }) {
   ];
 
   return (
-    <aside className="flex h-full w-64 flex-col gap-6 border-r bg-sidebar p-4">
-      <div className="flex items-center gap-2 px-3 py-2">
-        <img src="/logo/rivexo_horizontal.svg" alt="Rivexo" className="h-7 w-auto" />
-        <span className="text-xs font-semibold text-muted-foreground">OS</span>
-      </div>
+    <SidebarRoot collapsible="icon">
+      <SidebarHeader>
+        <div className="flex items-center gap-2 overflow-hidden px-2 py-1.5">
+          <img
+            src="/logo/rivexo_icon.svg"
+            alt="Rivexo"
+            className="hidden size-5 shrink-0 group-data-[collapsible=icon]:block"
+          />
+          <img
+            src="/logo/rivexo_horizontal.svg"
+            alt="Rivexo"
+            className="h-4 w-auto shrink-0 group-data-[collapsible=icon]:hidden"
+          />
+          <span className="shrink-0 text-xs font-semibold text-muted-foreground group-data-[collapsible=icon]:hidden">
+            OS
+          </span>
+        </div>
+      </SidebarHeader>
 
-      <NavSection title="General" items={[{ href: "/", label: "Dashboard", icon: LayoutDashboard }]} />
+      <SidebarContent>
+        <NavMenu title="General" items={[{ href: "/", label: "Dashboard", icon: LayoutDashboard }]} />
 
-      {canViewCrm(role) && <NavSection title="CRM" items={crmItems} />}
+        {canViewCrm(role) && <NavMenu title="CRM" items={crmItems} />}
 
-      {canManageSettings(role) && <NavSection title="Settings" items={settingsItems} />}
-    </aside>
+        {canManageSettings(role) && <NavMenu title="Settings" items={settingsItems} />}
+      </SidebarContent>
+
+      <SidebarRail />
+    </SidebarRoot>
   );
 }

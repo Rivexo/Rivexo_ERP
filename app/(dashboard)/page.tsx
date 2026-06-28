@@ -1,6 +1,9 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { DealsByStageChart } from "@/components/dashboard/DealsByStageChart";
+import { PipelineDistributionChart } from "@/components/dashboard/PipelineDistributionChart";
+import { WonLostTrendChart } from "@/components/dashboard/WonLostTrendChart";
 import { formatCurrency } from "@/lib/utils";
-import { getCrmDashboard } from "@/services/dashboard.service";
+import { getCrmDashboard, getDealsByStage, getDealsWonLostMonthly } from "@/services/dashboard.service";
 
 function KpiCard({ title, value }: { title: string; value: string | number }) {
   return (
@@ -16,7 +19,11 @@ function KpiCard({ title, value }: { title: string; value: string | number }) {
 }
 
 export default async function DashboardPage() {
-  const kpis = await getCrmDashboard();
+  const [kpis, dealsByStage, wonLostMonthly] = await Promise.all([
+    getCrmDashboard(),
+    getDealsByStage(),
+    getDealsWonLostMonthly(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -32,6 +39,13 @@ export default async function DashboardPage() {
         <KpiCard title="Deals ganados (mes)" value={kpis.deals_won_this_month ?? 0} />
         <KpiCard title="Ingresos ganados (mes)" value={formatCurrency(kpis.revenue_won_this_month)} />
       </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <DealsByStageChart data={dealsByStage} />
+        <PipelineDistributionChart data={dealsByStage} />
+      </div>
+
+      <WonLostTrendChart data={wonLostMonthly} />
     </div>
   );
 }

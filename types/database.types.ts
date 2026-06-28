@@ -403,6 +403,13 @@ export type Database = {
             referencedRelation: "pipeline_stages"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deals_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "v_deals_by_stage"
+            referencedColumns: ["stage_id"]
+          },
         ]
       }
       pipeline_stages: {
@@ -497,6 +504,28 @@ export type Database = {
           pipeline_value: number | null
           revenue_won_this_month: number | null
           total_accounts: number | null
+        }
+        Relationships: []
+      }
+      v_deals_by_stage: {
+        Row: {
+          color: string | null
+          deal_count: number | null
+          is_lost: boolean | null
+          is_won: boolean | null
+          order_index: number | null
+          stage_id: string | null
+          stage_name: string | null
+          total_value: number | null
+        }
+        Relationships: []
+      }
+      v_deals_won_lost_monthly: {
+        Row: {
+          lost_count: number | null
+          month: string | null
+          won_count: number | null
+          won_value: number | null
         }
         Relationships: []
       }
