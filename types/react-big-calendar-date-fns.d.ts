@@ -1,8 +1,8 @@
 // @types/react-big-calendar no cubre el subpath del localizer de date-fns.
+/* eslint-disable @typescript-eslint/no-explicit-any -- forma real (no tipada) del contrato externo de la libreria */
 declare module "react-big-calendar/lib/localizers/date-fns" {
   import type { DateLocalizer } from "react-big-calendar";
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   interface DateFnsLocalizerSpec {
     format: (...args: any[]) => string;
     parse: (...args: any[]) => Date;
