@@ -719,6 +719,7 @@ export type Database = {
           budget_sold: number
           created_at: string
           direct_cost: number
+          iva_rate: number
           project_id: string
           updated_at: string
         }
@@ -726,6 +727,7 @@ export type Database = {
           budget_sold?: number
           created_at?: string
           direct_cost?: number
+          iva_rate?: number
           project_id: string
           updated_at?: string
         }
@@ -733,6 +735,7 @@ export type Database = {
           budget_sold?: number
           created_at?: string
           direct_cost?: number
+          iva_rate?: number
           project_id?: string
           updated_at?: string
         }
@@ -1175,6 +1178,8 @@ export type Database = {
     Views: {
       deal_financials_view: {
         Row: {
+          cost_iva_amount: number | null
+          cost_with_iva: number | null
           deal_id: string | null
           estimated_direct_cost: number | null
           estimated_profit: number | null
@@ -1216,6 +1221,13 @@ export type Database = {
           month: string | null
           won_count: number | null
           won_value: number | null
+        }
+        Relationships: []
+      }
+      v_pipeline_summary: {
+        Row: {
+          total_billing: number | null
+          total_contribution_margin: number | null
         }
         Relationships: []
       }

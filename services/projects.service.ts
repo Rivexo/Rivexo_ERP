@@ -29,6 +29,38 @@ export async function listProjects(): Promise<ProjectWithRelations[]> {
   return data as unknown as ProjectWithRelations[];
 }
 
+export type ProjectWithCurrentPhase = ProjectWithRelations & {
+  current_phase_code: string | null;
+  current_phase_name: string | null;
+};
+
+export async function listProjectsWithCurrentPhase(): Promise<ProjectWithCurrentPhase[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .select(`
+      ${PROJECT_RELATIONS_SELECT},
+      project_ideas_phases(status, phase:ideas_phases(code, name, order_index))
+    `)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  type Row = ProjectWithRelations & {
+    project_ideas_phases: { status: string; phase: { code: string; name: string; order_index: number } }[];
+  };
+
+  return (data as unknown as Row[]).map(({ project_ideas_phases, ...project }) => {
+    const sorted = [...project_ideas_phases].sort((a, b) => a.phase.order_index - b.phase.order_index);
+    const current = sorted.find((p) => p.status !== "done") ?? sorted[sorted.length - 1];
+    return {
+      ...project,
+      current_phase_code: current?.phase.code ?? null,
+      current_phase_name: current?.phase.name ?? null,
+    };
+  });
+}
+
 export async function getProjectByDealId(dealId: string): Promise<{ id: string } | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("projects").select("id").eq("deal_id", dealId).maybeSingle();

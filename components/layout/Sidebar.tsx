@@ -101,7 +101,13 @@ export function Sidebar({ role }: { role: UserRole }) {
         {canViewCrm(role) && <NavMenu title="CRM" items={crmItems} />}
 
         {canViewProjects(role) && (
-          <NavMenu title="Proyectos" items={[{ href: "/projects", label: "Proyectos", icon: FolderKanban }]} />
+          <NavMenu
+            title="Proyectos"
+            items={[
+              { href: "/projects", label: "Proyectos", icon: FolderKanban },
+              { href: "/projects/board", label: "Tablero IDEAS", icon: KanbanSquare },
+            ]}
+          />
         )}
 
         {canManageSettings(role) && <NavMenu title="Settings" items={settingsItems} />}

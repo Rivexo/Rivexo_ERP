@@ -4,10 +4,11 @@ import { Folder } from "lucide-react";
 import { DealForm } from "@/components/crm/DealForm";
 import { DealFinancialsPanel } from "@/components/crm/DealFinancialsPanel";
 import { ConvertToProjectButton } from "@/components/crm/ConvertToProjectButton";
+import { ContractsPanel } from "@/components/shared/ContractsPanel";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ConfirmDeleteButton } from "@/components/shared/ConfirmDeleteButton";
 import { Button } from "@/components/ui/button";
-import { canConvertDealToProject, canViewFinancials } from "@/lib/permissions";
+import { canConvertDealToProject, canManageCrm, canViewFinancials } from "@/lib/permissions";
 import { getCurrentProfile } from "@/services/profiles.service";
 import { listProfiles } from "@/services/profiles.service";
 import { listAccountOptions } from "@/services/accounts.service";
@@ -16,14 +17,16 @@ import { listBusinessLines } from "@/services/business-lines.service";
 import { listPipelineStages } from "@/services/pipeline-stages.service";
 import { getDeal, getDealFinancials } from "@/services/deals.service";
 import { getProjectByDealId } from "@/services/projects.service";
+import { listFiles } from "@/services/files.service";
 import { convertDealToProjectAction, deleteDealAction, updateDealAction } from "../actions";
+import { deleteContractAction, uploadContractAction } from "../contracts-actions";
 
 export default async function DealDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const deal = await getDeal(id);
   if (!deal) notFound();
 
-  const [profile, accounts, contacts, businessLines, owners, stages, financials, existingProject] =
+  const [profile, accounts, contacts, businessLines, owners, stages, financials, existingProject, contracts] =
     await Promise.all([
       getCurrentProfile(),
       listAccountOptions(),
@@ -33,10 +36,12 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
       listPipelineStages(),
       getDealFinancials(id),
       getProjectByDealId(id),
+      listFiles("deal", id),
     ]);
 
   const showFinancials = profile ? canViewFinancials(profile.role) : false;
   const canConvert = profile ? canConvertDealToProject(profile.role) : false;
+  const canManageContracts = profile ? canManageCrm(profile.role) : false;
 
   return (
     <div className="space-y-6">
@@ -75,6 +80,13 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
         canViewFinancials={showFinancials}
         initialEstimatedDirectCost={financials?.estimated_direct_cost}
         onSubmit={updateDealAction.bind(null, id)}
+      />
+
+      <ContractsPanel
+        contracts={contracts}
+        onUpload={canManageContracts ? uploadContractAction.bind(null, id) : undefined}
+        onDelete={canManageContracts ? deleteContractAction.bind(null, id) : undefined}
+        readOnly={!canManageContracts}
       />
     </div>
   );

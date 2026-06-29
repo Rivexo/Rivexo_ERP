@@ -34,12 +34,12 @@ function DealCard({ deal }: { deal: DealWithRelations }) {
   return (
     <div ref={setNodeRef} {...listeners} {...attributes} className={cn("cursor-grab", isDragging && "opacity-50")}>
       <Card>
-        <CardContent className="space-y-1 p-3">
-          <Link href={`/crm/deals/${deal.id}`} className="text-sm font-medium hover:underline">
+        <CardContent className="space-y-1 p-2.5">
+          <Link href={`/crm/deals/${deal.id}`} className="text-xs font-medium hover:underline">
             {deal.name}
           </Link>
-          <p className="text-xs text-muted-foreground">{deal.account?.name}</p>
-          <p className="text-sm font-semibold">{formatCurrency(deal.price)}</p>
+          <p className="truncate text-xs text-muted-foreground">{deal.account?.name}</p>
+          <p className="text-xs font-semibold">{formatCurrency(deal.price)}</p>
         </CardContent>
       </Card>
     </div>
@@ -53,13 +53,13 @@ function StageColumn({ stage, deals }: { stage: PipelineStage; deals: DealWithRe
   return (
     <div
       ref={setNodeRef}
-      className={cn("flex w-72 shrink-0 flex-col gap-2 rounded-md border bg-muted/30 p-3", isOver && "ring-2 ring-primary")}
+      className={cn("flex min-w-0 flex-col gap-2 rounded-md border bg-muted/30 p-2.5", isOver && "ring-2 ring-primary")}
     >
-      <div className="flex items-center justify-between">
-        <Badge style={{ backgroundColor: stage.color ?? undefined }} className="text-white">
+      <div className="flex items-center justify-between gap-1">
+        <Badge style={{ backgroundColor: stage.color ?? undefined }} className="truncate text-white">
           {stage.name}
         </Badge>
-        <span className="text-xs text-muted-foreground">{deals.length}</span>
+        <span className="shrink-0 text-xs text-muted-foreground">{deals.length}</span>
       </div>
       <p className="text-xs text-muted-foreground">{formatCurrency(total)}</p>
       <div className="flex flex-col gap-2">
@@ -113,7 +113,10 @@ export function PipelineBoard({ stages, deals }: { stages: PipelineStage[]; deal
   return (
     <>
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div
+          className="grid gap-3 overflow-x-auto pb-4"
+          style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(160px, 1fr))` }}
+        >
           {stages.map((stage) => (
             <StageColumn key={stage.id} stage={stage} deals={dealsByStage.get(stage.id) ?? []} />
           ))}

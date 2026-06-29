@@ -4,6 +4,7 @@ import type { DealInput } from "@/lib/validations/deal";
 
 export type Deal = Database["public"]["Tables"]["deals"]["Row"];
 export type DealFinancials = Database["public"]["Views"]["deal_financials_view"]["Row"];
+export type PipelineSummary = Database["public"]["Views"]["v_pipeline_summary"]["Row"];
 
 export type DealWithRelations = Deal & {
   account: { id: string; name: string } | null;
@@ -64,6 +65,13 @@ export async function getDeal(id: string): Promise<DealWithRelations | null> {
 export async function getDealFinancials(dealId: string): Promise<DealFinancials | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("deal_financials_view").select("*").eq("deal_id", dealId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function getPipelineSummary(): Promise<PipelineSummary> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("v_pipeline_summary").select("*").single();
   if (error) throw error;
   return data;
 }

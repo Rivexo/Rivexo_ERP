@@ -221,7 +221,7 @@ export function DealForm({
 
         {canViewFinancials && (
           <div className="space-y-2">
-            <Label htmlFor="estimated_direct_cost">Costo directo estimado</Label>
+            <Label htmlFor="estimated_direct_cost">Costo directo estimado (sin IVA)</Label>
             <Input id="estimated_direct_cost" type="number" step="0.01" min={0} {...register("estimated_direct_cost")} />
           </div>
         )}

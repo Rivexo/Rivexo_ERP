@@ -8,7 +8,8 @@ export function DealFinancialsPanel({ financials }: { financials: DealFinancials
   }
 
   const items = [
-    { label: "Costo directo estimado", value: formatCurrency(financials.estimated_direct_cost) },
+    { label: "Costo directo estimado (sin IVA)", value: formatCurrency(financials.estimated_direct_cost) },
+    { label: "Costo con IVA", value: formatCurrency(financials.cost_with_iva) },
     { label: "IVA", value: formatCurrency(financials.iva_amount) },
     { label: "Total con IVA", value: formatCurrency(financials.total_with_iva) },
     { label: "Margen bruto", value: formatCurrency(financials.gross_margin) },

@@ -8,19 +8,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ContactDialog } from "@/components/crm/ContactDialog";
+import { ContractsPanel } from "@/components/shared/ContractsPanel";
 import { canManageCrm } from "@/lib/permissions";
 import { formatCurrency } from "@/lib/utils";
 import { getCurrentProfile } from "@/services/profiles.service";
 import { getAccount } from "@/services/accounts.service";
 import { listContactsByAccount } from "@/services/contacts.service";
 import { listDealsByAccount } from "@/services/deals.service";
+import { listContractsByAccount } from "@/services/files.service";
 
 export default async function AccountDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [account, profile] = await Promise.all([getAccount(id), getCurrentProfile()]);
   if (!account) notFound();
 
-  const [contacts, deals] = await Promise.all([listContactsByAccount(id), listDealsByAccount(id)]);
+  const [contacts, deals, contracts] = await Promise.all([
+    listContactsByAccount(id),
+    listDealsByAccount(id),
+    listContractsByAccount(id),
+  ]);
   const canManage = profile ? canManageCrm(profile.role) : false;
 
   return (
@@ -42,6 +48,7 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="contacts">Contactos ({contacts.length})</TabsTrigger>
           <TabsTrigger value="deals">Deals ({deals.length})</TabsTrigger>
+          <TabsTrigger value="contracts">Contratos ({contracts.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
@@ -131,6 +138,10 @@ export default async function AccountDetailPage({ params }: { params: Promise<{ 
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="contracts" className="mt-4">
+          <ContractsPanel contracts={contracts} readOnly />
         </TabsContent>
       </Tabs>
     </div>
