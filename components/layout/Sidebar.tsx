@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Building2,
   Contact,
+  FolderKanban,
   Handshake,
   KanbanSquare,
   LayoutDashboard,
@@ -23,7 +24,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { canManageSettings, canViewCrm, type UserRole } from "@/lib/permissions";
+import { canManageSettings, canViewCrm, canViewProjects, type UserRole } from "@/lib/permissions";
 
 type NavItem = {
   href: string;
@@ -98,6 +99,10 @@ export function Sidebar({ role }: { role: UserRole }) {
         <NavMenu title="General" items={[{ href: "/", label: "Dashboard", icon: LayoutDashboard }]} />
 
         {canViewCrm(role) && <NavMenu title="CRM" items={crmItems} />}
+
+        {canViewProjects(role) && (
+          <NavMenu title="Proyectos" items={[{ href: "/projects", label: "Proyectos", icon: FolderKanban }]} />
+        )}
 
         {canManageSettings(role) && <NavMenu title="Settings" items={settingsItems} />}
       </SidebarContent>

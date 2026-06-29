@@ -36,3 +36,27 @@ export function canViewFinancials(role: UserRole): boolean {
 export function canManageSettings(role: UserRole): boolean {
   return isAdminRole(role);
 }
+
+// Proyectos, IDEAS, SWOT, riesgos, decisiones: admin total, PM sobre los suyos
+// (RLS valida la asignación real); finanzas solo lectura. Ventas no entra aquí.
+export function canViewProjects(role: UserRole): boolean {
+  return isAdminRole(role) || role === "project_manager" || role === "finance" || role === "operations";
+}
+
+export function canManageProjects(role: UserRole): boolean {
+  return isAdminRole(role) || role === "project_manager";
+}
+
+// Costo directo/presupuesto de proyectos: PM los ve (de sus proyectos) pero no los edita,
+// igual que la política RLS de project_financials (select admin/finance/PM, write admin/finance).
+export function canViewProjectFinancials(role: UserRole): boolean {
+  return isAdminRole(role) || role === "finance" || role === "project_manager";
+}
+
+export function canManageProjectFinancials(role: UserRole): boolean {
+  return isAdminRole(role) || role === "finance";
+}
+
+export function canConvertDealToProject(role: UserRole): boolean {
+  return isAdminRole(role);
+}

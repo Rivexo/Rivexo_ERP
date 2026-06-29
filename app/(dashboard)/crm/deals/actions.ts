@@ -1,5 +1,6 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { dealSchema, type DealInput } from "@/lib/validations/deal";
@@ -42,4 +43,13 @@ export async function updateDealStageAction(
   revalidatePath("/crm/pipeline");
   revalidatePath("/crm/deals");
   revalidatePath(`/crm/deals/${dealId}`);
+}
+
+export async function convertDealToProjectAction(dealId: string): Promise<void> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("convert_deal_to_project", { p_deal_id: dealId });
+  if (error) throw error;
+  revalidatePath(`/crm/deals/${dealId}`);
+  revalidatePath("/projects");
+  redirect(`/projects/${data}`);
 }
