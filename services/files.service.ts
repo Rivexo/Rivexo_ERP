@@ -35,6 +35,35 @@ export async function listFiles(entityType: string, entityId: string): Promise<F
   return attachSignedUrls(supabase, data as unknown as (FileRow & { uploader: { id: string; full_name: string } | null })[]);
 }
 
+// Mapa entity_id -> primer archivo, para listas que muestran un archivo por fila
+// (ej. una factura de freelancer por proyecto) sin hacer un round-trip por fila.
+export async function listFilesByEntityIds(
+  entityType: string,
+  entityIds: string[],
+): Promise<Record<string, FileWithUploader | undefined>> {
+  if (entityIds.length === 0) return {};
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("files")
+    .select("*, uploader:profiles(id, full_name)")
+    .eq("entity_type", entityType)
+    .in("entity_id", entityIds)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  const withUrls = await attachSignedUrls(
+    supabase,
+    data as unknown as (FileRow & { uploader: { id: string; full_name: string } | null })[],
+  );
+
+  const map: Record<string, FileWithUploader> = {};
+  for (const file of withUrls) {
+    if (!map[file.entity_id]) map[file.entity_id] = file;
+  }
+  return map;
+}
+
 export async function listContractsByAccount(accountId: string): Promise<FileWithUploader[]> {
   const supabase = await createClient();
   const { data: deals, error: dealsError } = await supabase.from("deals").select("id").eq("account_id", accountId);
@@ -54,7 +83,7 @@ export async function listContractsByAccount(accountId: string): Promise<FileWit
   return attachSignedUrls(supabase, data as unknown as (FileRow & { uploader: { id: string; full_name: string } | null })[]);
 }
 
-export async function uploadFile(entityType: string, entityId: string, file: File): Promise<void> {
+export async function uploadFile(entityType: string, entityId: string, file: File, bucket = "contracts"): Promise<void> {
   if (file.type !== "application/pdf") {
     throw new Error("Solo se permiten archivos PDF");
   }
@@ -64,13 +93,13 @@ export async function uploadFile(entityType: string, entityId: string, file: Fil
   if (!userData.user) throw new Error("No autenticado");
 
   const path = `${entityType}/${entityId}/${Date.now()}-${file.name}`;
-  const { error: uploadError } = await supabase.storage.from("contracts").upload(path, file, { contentType: file.type });
+  const { error: uploadError } = await supabase.storage.from(bucket).upload(path, file, { contentType: file.type });
   if (uploadError) throw uploadError;
 
   const { error } = await supabase.from("files").insert({
     entity_type: entityType,
     entity_id: entityId,
-    bucket: "contracts",
+    bucket,
     path,
     file_name: file.name,
     mime_type: file.type,

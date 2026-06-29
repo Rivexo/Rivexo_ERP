@@ -379,7 +379,10 @@ export type Database = {
           deleted_at: string | null
           deposit_percentage: number | null
           expected_close_date: string | null
+          financed_total: number | null
+          financing_term_months: number | null
           id: string
+          is_financed: boolean
           iva_rate: number
           lost_reason: string | null
           monthly_support_amount: number | null
@@ -402,7 +405,10 @@ export type Database = {
           deleted_at?: string | null
           deposit_percentage?: number | null
           expected_close_date?: string | null
+          financed_total?: number | null
+          financing_term_months?: number | null
           id?: string
+          is_financed?: boolean
           iva_rate?: number
           lost_reason?: string | null
           monthly_support_amount?: number | null
@@ -425,7 +431,10 @@ export type Database = {
           deleted_at?: string | null
           deposit_percentage?: number | null
           expected_close_date?: string | null
+          financed_total?: number | null
+          financing_term_months?: number | null
           id?: string
+          is_financed?: boolean
           iva_rate?: number
           lost_reason?: string | null
           monthly_support_amount?: number | null
@@ -612,6 +621,53 @@ export type Database = {
           },
         ]
       }
+      freelancer_invoices: {
+        Row: {
+          amount: number
+          created_at: string
+          freelancer_name: string
+          id: string
+          invoice_date: string
+          notes: string | null
+          paid_at: string | null
+          project_id: string
+          status: Database["public"]["Enums"]["freelancer_invoice_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          freelancer_name: string
+          id?: string
+          invoice_date?: string
+          notes?: string | null
+          paid_at?: string | null
+          project_id: string
+          status?: Database["public"]["Enums"]["freelancer_invoice_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          freelancer_name?: string
+          id?: string
+          invoice_date?: string
+          notes?: string | null
+          paid_at?: string | null
+          project_id?: string
+          status?: Database["public"]["Enums"]["freelancer_invoice_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freelancer_invoices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ideas_phases: {
         Row: {
           code: string
@@ -675,6 +731,7 @@ export type Database = {
         Row: {
           account_id: string
           amount: number
+          billing_cycle: Database["public"]["Enums"]["support_billing_cycle"]
           billing_day: number
           created_at: string
           end_date: string | null
@@ -682,11 +739,13 @@ export type Database = {
           project_id: string | null
           start_date: string
           status: Database["public"]["Enums"]["subscription_status"]
+          term: Database["public"]["Enums"]["support_term"]
           updated_at: string
         }
         Insert: {
           account_id: string
           amount: number
+          billing_cycle?: Database["public"]["Enums"]["support_billing_cycle"]
           billing_day: number
           created_at?: string
           end_date?: string | null
@@ -694,11 +753,13 @@ export type Database = {
           project_id?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["subscription_status"]
+          term?: Database["public"]["Enums"]["support_term"]
           updated_at?: string
         }
         Update: {
           account_id?: string
           amount?: number
+          billing_cycle?: Database["public"]["Enums"]["support_billing_cycle"]
           billing_day?: number
           created_at?: string
           end_date?: string | null
@@ -706,6 +767,7 @@ export type Database = {
           project_id?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["subscription_status"]
+          term?: Database["public"]["Enums"]["support_term"]
           updated_at?: string
         }
         Relationships: [
@@ -847,6 +909,9 @@ export type Database = {
           budget_sold: number
           created_at: string
           direct_cost: number
+          financed_total: number | null
+          financing_term_months: number | null
+          is_financed: boolean
           iva_rate: number
           project_id: string
           updated_at: string
@@ -855,6 +920,9 @@ export type Database = {
           budget_sold?: number
           created_at?: string
           direct_cost?: number
+          financed_total?: number | null
+          financing_term_months?: number | null
+          is_financed?: boolean
           iva_rate?: number
           project_id: string
           updated_at?: string
@@ -863,6 +931,9 @@ export type Database = {
           budget_sold?: number
           created_at?: string
           direct_cost?: number
+          financed_total?: number | null
+          financing_term_months?: number | null
+          is_financed?: boolean
           iva_rate?: number
           project_id?: string
           updated_at?: string
@@ -1169,6 +1240,7 @@ export type Database = {
           amount: number
           created_at: string
           id: string
+          kind: Database["public"]["Enums"]["revenue_kind"]
           notes: string | null
           payment_method: string | null
           project_id: string | null
@@ -1179,6 +1251,7 @@ export type Database = {
           amount: number
           created_at?: string
           id?: string
+          kind?: Database["public"]["Enums"]["revenue_kind"]
           notes?: string | null
           payment_method?: string | null
           project_id?: string | null
@@ -1189,6 +1262,7 @@ export type Database = {
           amount?: number
           created_at?: string
           id?: string
+          kind?: Database["public"]["Enums"]["revenue_kind"]
           notes?: string | null
           payment_method?: string | null
           project_id?: string | null
@@ -1447,7 +1521,9 @@ export type Database = {
       }
       v_erp_financial_summary: {
         Row: {
+          active_arr: number | null
           active_mrr: number | null
+          current_month_financing_income: number | null
           current_month_revenue: number | null
           current_month_variable_expenses: number | null
           monthly_fixed_costs: number | null
@@ -1492,6 +1568,7 @@ export type Database = {
       cost_frequency: "monthly" | "annual" | "one_time"
       decision_impact: "low" | "medium" | "high"
       expense_category_kind: "fixed" | "variable"
+      freelancer_invoice_status: "pending" | "paid"
       installment_status: "pending" | "invoiced" | "paid"
       payment_method:
         | "transferencia"
@@ -1505,9 +1582,12 @@ export type Database = {
         | "on_hold"
         | "completed"
         | "cancelled"
+      revenue_kind: "principal" | "interest"
       risk_level: "low" | "medium" | "high"
       risk_status: "open" | "mitigated" | "closed"
       subscription_status: "active" | "paused" | "cancelled"
+      support_billing_cycle: "monthly" | "annual"
+      support_term: "6_months" | "1_year" | "3_years" | "indefinite"
       swot_type: "strength" | "weakness" | "opportunity" | "threat"
       task_priority: "low" | "medium" | "high" | "urgent"
       task_status: "todo" | "in_progress" | "in_review" | "done" | "blocked"
@@ -1653,6 +1733,7 @@ export const Constants = {
       cost_frequency: ["monthly", "annual", "one_time"],
       decision_impact: ["low", "medium", "high"],
       expense_category_kind: ["fixed", "variable"],
+      freelancer_invoice_status: ["pending", "paid"],
       installment_status: ["pending", "invoiced", "paid"],
       payment_method: [
         "transferencia",
@@ -1668,9 +1749,12 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
+      revenue_kind: ["principal", "interest"],
       risk_level: ["low", "medium", "high"],
       risk_status: ["open", "mitigated", "closed"],
       subscription_status: ["active", "paused", "cancelled"],
+      support_billing_cycle: ["monthly", "annual"],
+      support_term: ["6_months", "1_year", "3_years", "indefinite"],
       swot_type: ["strength", "weakness", "opportunity", "threat"],
       task_priority: ["low", "medium", "high", "urgent"],
       task_status: ["todo", "in_progress", "in_review", "done", "blocked"],

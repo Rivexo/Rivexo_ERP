@@ -80,6 +80,9 @@ export function DealForm({
       monthly_support_amount: deal?.monthly_support_amount ?? null,
       observations: deal?.observations ?? "",
       estimated_direct_cost: initialEstimatedDirectCost ?? null,
+      is_financed: deal?.is_financed ?? false,
+      financed_total: deal?.financed_total ?? null,
+      financing_term_months: deal?.financing_term_months ?? null,
     },
   });
 
@@ -224,6 +227,39 @@ export function DealForm({
             <Label htmlFor="estimated_direct_cost">Costo directo estimado (sin IVA)</Label>
             <Input id="estimated_direct_cost" type="number" step="0.01" min={0} {...register("estimated_direct_cost")} />
           </div>
+        )}
+
+        <div className="space-y-2">
+          <Label>Forma de cobro</Label>
+          <Select
+            value={watch("is_financed") ? "financiado" : "contado"}
+            onValueChange={(value) => setValue("is_financed", value === "financiado")}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Forma de cobro">
+                {(value: string | null) => (value === "financiado" ? "Financiado" : "Contado")}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="contado">Contado</SelectItem>
+              <SelectItem value="financiado">Financiado</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {watch("is_financed") && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="financed_total">Total financiado (con intereses)</Label>
+              <Input id="financed_total" type="number" step="0.01" min={0} {...register("financed_total")} />
+              {errors.financed_total && <p className="text-sm text-destructive">{errors.financed_total.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="financing_term_months">Plazo (meses)</Label>
+              <Input id="financing_term_months" type="number" min={1} {...register("financing_term_months")} />
+            </div>
+          </>
         )}
 
         <div className="space-y-2">

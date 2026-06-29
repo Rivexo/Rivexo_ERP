@@ -21,6 +21,14 @@ export function ProjectFinancialsPanel({ financials }: { financials: ProjectFina
     { label: "Margen %", value: formatPercent(marginPct) },
   ];
 
+  if (financials.is_financed) {
+    items.push(
+      { label: "Total financiado", value: formatCurrency(financials.financed_total ?? 0) },
+      { label: "Plazo", value: `${financials.financing_term_months ?? 0} meses` },
+      { label: "Ingreso por financiamiento", value: formatCurrency((financials.financed_total ?? 0) - financials.budget_sold) },
+    );
+  }
+
   return (
     <Card>
       <CardHeader>

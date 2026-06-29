@@ -8,6 +8,7 @@ export const revenueSchema = z.object({
   received_at: z.string().min(1, "La fecha es requerida"),
   payment_method: z.string().optional().or(z.literal("")),
   related_installment_id: z.preprocess(emptyToNull, z.string().uuid().nullable().optional()),
+  kind: z.enum(["principal", "interest"]),
   notes: z.string().optional().or(z.literal("")),
 });
 

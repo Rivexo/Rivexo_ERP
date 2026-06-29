@@ -22,6 +22,11 @@ const PAYMENT_METHOD_OPTIONS = [
   { value: "otro", label: "Otro" },
 ] as const;
 
+const KIND_OPTIONS = [
+  { value: "principal", label: "Principal" },
+  { value: "interest", label: "Interés / financiamiento" },
+] as const;
+
 export function RevenueDialog({
   revenue,
   projects,
@@ -52,6 +57,7 @@ export function RevenueDialog({
       received_at: revenue?.received_at ?? new Date().toISOString().slice(0, 10),
       payment_method: revenue?.payment_method ?? "",
       related_installment_id: revenue?.related_installment_id ?? null,
+      kind: revenue?.kind ?? "principal",
       notes: revenue?.notes ?? "",
     },
   });
@@ -131,6 +137,24 @@ export function RevenueDialog({
               <Label htmlFor="received_at">Fecha *</Label>
               <Input id="received_at" type="date" {...register("received_at")} />
               {errors.received_at && <p className="text-sm text-destructive">{errors.received_at.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tipo de ingreso</Label>
+              <Select value={watch("kind")} onValueChange={(v) => setValue("kind", v as RevenueInput["kind"])}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Tipo">
+                    {(value: string | null) => KIND_OPTIONS.find((o) => o.value === value)?.label}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {KIND_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

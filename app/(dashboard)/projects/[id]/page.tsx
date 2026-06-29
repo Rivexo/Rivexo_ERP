@@ -3,13 +3,21 @@ import { ProjectForm } from "@/components/projects/ProjectForm";
 import { ProjectFinancialsPanel } from "@/components/projects/ProjectFinancialsPanel";
 import { CommentsPanel } from "@/components/shared/CommentsPanel";
 import { LinksPanel } from "@/components/shared/LinksPanel";
-import { isAdminRole, canManageProjectFinancials, canViewProjectFinancials } from "@/lib/permissions";
+import { FreelancerInvoiceList } from "@/components/erp/FreelancerInvoiceList";
+import { isAdminRole, canAccessErp, canManageProjectFinancials, canViewProjectFinancials } from "@/lib/permissions";
 import { getCurrentProfile, listProfiles } from "@/services/profiles.service";
 import { listBusinessLines } from "@/services/business-lines.service";
 import { getProject, getProjectFinancials } from "@/services/projects.service";
 import { listComments } from "@/services/comments.service";
 import { listLinks } from "@/services/links.service";
+import { listFreelancerInvoicesByProject } from "@/services/freelancer-invoices.service";
+import { listFilesByEntityIds } from "@/services/files.service";
 import { createCommentAction, createLinkAction, deleteCommentAction, deleteLinkAction, updateProjectAction } from "../actions";
+import {
+  createFreelancerInvoiceAction,
+  deleteFreelancerInvoiceAction,
+  toggleFreelancerInvoiceStatusAction,
+} from "../../erp/freelancers/actions";
 
 export default async function ProjectOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,7 +35,13 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
 
   const showFinancials = profile ? canViewProjectFinancials(profile.role) : false;
   const manageFinancials = profile ? canManageProjectFinancials(profile.role) : false;
+  const showFreelancerInvoices = profile ? canAccessErp(profile.role) : false;
   const projectManagers = profiles.filter((p) => p.role === "project_manager" || isAdminRole(p.role));
+
+  const freelancerInvoices = showFreelancerInvoices ? await listFreelancerInvoicesByProject(id) : [];
+  const freelancerFiles = showFreelancerInvoices
+    ? await listFilesByEntityIds("freelancer_invoice", freelancerInvoices.map((i) => i.id))
+    : {};
 
   return (
     <div className="space-y-6">
@@ -55,6 +69,21 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
         )}
         <LinksPanel entityType="project" entityId={id} links={links} onCreate={createLinkAction} onDelete={deleteLinkAction} />
       </div>
+
+      {showFreelancerInvoices && (
+        <div>
+          <h3 className="mb-2 text-sm font-medium">Facturas de freelancers</h3>
+          <FreelancerInvoiceList
+            invoices={freelancerInvoices}
+            files={freelancerFiles}
+            fixedProjectId={id}
+            projects={[]}
+            onCreate={createFreelancerInvoiceAction}
+            onToggleStatus={toggleFreelancerInvoiceStatusAction}
+            onDelete={deleteFreelancerInvoiceAction}
+          />
+        </div>
+      )}
     </div>
   );
 }

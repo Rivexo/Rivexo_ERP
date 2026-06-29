@@ -68,7 +68,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
         }
       />
 
-      {showFinancials && <DealFinancialsPanel financials={financials} />}
+      {showFinancials && <DealFinancialsPanel financials={financials} deal={deal} />}
 
       <DealForm
         deal={deal}

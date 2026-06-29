@@ -21,6 +21,12 @@ export const dealSchema = z.object({
   observations: z.string().optional().or(z.literal("")),
   // Solo se persiste si quien envía el formulario tiene permiso (founder/socio/finanzas); RLS lo garantiza también server-side.
   estimated_direct_cost: z.preprocess(emptyToNull, z.coerce.number().min(0).nullable().optional()),
+  is_financed: z.boolean(),
+  financed_total: z.preprocess(emptyToNull, z.coerce.number().min(0).nullable().optional()),
+  financing_term_months: z.preprocess(emptyToNull, z.coerce.number().int().min(1).nullable().optional()),
+}).refine((data) => !data.is_financed || (data.financed_total != null && data.financing_term_months != null), {
+  message: "Captura el total financiado y el plazo en meses",
+  path: ["financed_total"],
 });
 
 // zod v4's z.coerce.number() input type is `unknown`, so the form (pre-parse) and the

@@ -8,6 +8,7 @@ import {
   DollarSign,
   FileBarChart,
   FolderKanban,
+  HandCoins,
   Handshake,
   KanbanSquare,
   LayoutDashboard,
@@ -84,24 +85,25 @@ export function Sidebar({ role }: { role: UserRole }) {
     { href: "/erp/costs", label: "Costos", icon: ReceiptText },
     { href: "/erp/revenues", label: "Ingresos", icon: DollarSign },
     { href: "/erp/support", label: "Soporte", icon: Repeat },
+    { href: "/erp/freelancers", label: "Freelancers", icon: HandCoins },
     { href: "/erp/reports", label: "Reportes", icon: FileBarChart },
   ];
 
   return (
     <SidebarRoot collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center gap-2 overflow-hidden px-2 py-1.5">
+        <div className="flex items-center gap-2 overflow-hidden px-2 py-2">
           <img
             src="/logo/rivexo_icon.svg"
             alt="Rivexo"
-            className="hidden size-5 shrink-0 group-data-[collapsible=icon]:block"
+            className="hidden size-11 shrink-0 group-data-[collapsible=icon]:block"
           />
           <img
             src="/logo/rivexo_horizontal.svg"
             alt="Rivexo"
-            className="h-4 w-auto shrink-0 group-data-[collapsible=icon]:hidden"
+            className="h-11 w-auto shrink-0 group-data-[collapsible=icon]:hidden"
           />
-          <span className="shrink-0 text-xs font-semibold text-muted-foreground group-data-[collapsible=icon]:hidden">
+          <span className="shrink-0 text-sm font-semibold text-muted-foreground group-data-[collapsible=icon]:hidden">
             OS
           </span>
         </div>

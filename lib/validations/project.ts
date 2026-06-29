@@ -13,6 +13,9 @@ export const projectSchema = z.object({
   // Solo se persiste si quien envía el formulario tiene permiso (founder/socio/finanzas); RLS lo garantiza también server-side.
   budget_sold: z.preprocess(emptyToNull, z.coerce.number().min(0).nullable().optional()),
   direct_cost: z.preprocess(emptyToNull, z.coerce.number().min(0).nullable().optional()),
+  is_financed: z.boolean().optional(),
+  financed_total: z.preprocess(emptyToNull, z.coerce.number().min(0).nullable().optional()),
+  financing_term_months: z.preprocess(emptyToNull, z.coerce.number().int().min(1).nullable().optional()),
 });
 
 export type ProjectFormValues = z.input<typeof projectSchema>;

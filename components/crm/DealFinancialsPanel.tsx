@@ -1,8 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency, formatPercent } from "@/lib/utils";
-import type { DealFinancials } from "@/services/deals.service";
+import type { DealFinancials, Deal } from "@/services/deals.service";
 
-export function DealFinancialsPanel({ financials }: { financials: DealFinancials | null }) {
+export function DealFinancialsPanel({ financials, deal }: { financials: DealFinancials | null; deal?: Deal }) {
   if (!financials) {
     return null;
   }
@@ -16,6 +16,14 @@ export function DealFinancialsPanel({ financials }: { financials: DealFinancials
     { label: "Margen %", value: formatPercent(financials.margin_pct) },
     { label: "Utilidad estimada", value: formatCurrency(financials.estimated_profit) },
   ];
+
+  if (deal?.is_financed) {
+    items.push(
+      { label: "Total financiado", value: formatCurrency(deal.financed_total ?? 0) },
+      { label: "Plazo", value: `${deal.financing_term_months ?? 0} meses` },
+      { label: "Ingreso por financiamiento", value: formatCurrency((deal.financed_total ?? 0) - deal.price) },
+    );
+  }
 
   return (
     <Card>

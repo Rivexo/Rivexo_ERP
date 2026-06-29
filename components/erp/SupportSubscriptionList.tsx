@@ -17,6 +17,12 @@ const STATUS_VARIANT: Record<string, "secondary" | "outline" | "destructive"> = 
   paused: "outline",
   cancelled: "destructive",
 };
+const TERM_LABELS: Record<string, string> = {
+  "6_months": "6 meses",
+  "1_year": "1 año",
+  "3_years": "3 años",
+  indefinite: "Indefinido",
+};
 
 export function SupportSubscriptionList({
   subscriptions,
@@ -63,6 +69,7 @@ export function SupportSubscriptionList({
               <TableHead>Proyecto</TableHead>
               <TableHead>Monto</TableHead>
               <TableHead>Día de cobro</TableHead>
+              <TableHead>Plazo</TableHead>
               <TableHead>Estatus</TableHead>
               <TableHead />
             </TableRow>
@@ -72,8 +79,12 @@ export function SupportSubscriptionList({
               <TableRow key={sub.id}>
                 <TableCell className="font-medium">{sub.account?.name ?? "—"}</TableCell>
                 <TableCell>{sub.project?.name ?? "—"}</TableCell>
-                <TableCell>{formatCurrency(sub.amount)}</TableCell>
+                <TableCell>
+                  {formatCurrency(sub.amount)}
+                  <span className="text-xs text-muted-foreground"> / {sub.billing_cycle === "annual" ? "año" : "mes"}</span>
+                </TableCell>
                 <TableCell>{sub.billing_day}</TableCell>
+                <TableCell>{TERM_LABELS[sub.term]}</TableCell>
                 <TableCell>
                   <Badge variant={STATUS_VARIANT[sub.status]}>{STATUS_LABELS[sub.status]}</Badge>
                 </TableCell>

@@ -23,6 +23,18 @@ const STATUS_OPTIONS = [
   { value: "cancelled", label: "Cancelada" },
 ] as const;
 
+const TERM_OPTIONS = [
+  { value: "6_months", label: "6 meses" },
+  { value: "1_year", label: "1 año" },
+  { value: "3_years", label: "3 años" },
+  { value: "indefinite", label: "Indefinido" },
+] as const;
+
+const BILLING_CYCLE_OPTIONS = [
+  { value: "monthly", label: "Mensual (MRR)" },
+  { value: "annual", label: "Anual (ARR)" },
+] as const;
+
 export function SupportSubscriptionDialog({
   subscription,
   accounts,
@@ -53,6 +65,8 @@ export function SupportSubscriptionDialog({
       amount: subscription?.amount ?? 0,
       billing_day: subscription?.billing_day ?? 1,
       status: subscription?.status ?? "active",
+      term: subscription?.term ?? "indefinite",
+      billing_cycle: subscription?.billing_cycle ?? "monthly",
       start_date: subscription?.start_date ?? new Date().toISOString().slice(0, 10),
       end_date: subscription?.end_date ?? null,
     },
@@ -112,7 +126,30 @@ export function SupportSubscriptionDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="amount">Monto mensual *</Label>
+              <Label>Ciclo de facturación</Label>
+              <Select
+                value={watch("billing_cycle")}
+                onValueChange={(v) => setValue("billing_cycle", v as SupportSubscriptionInput["billing_cycle"])}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Ciclo">
+                    {(value: string | null) => BILLING_CYCLE_OPTIONS.find((o) => o.value === value)?.label}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {BILLING_CYCLE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="amount">
+                {watch("billing_cycle") === "annual" ? "Monto anual *" : "Monto mensual *"}
+              </Label>
               <Input id="amount" type="number" step="0.01" min={0} {...register("amount")} />
               {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
             </div>
@@ -121,6 +158,24 @@ export function SupportSubscriptionDialog({
               <Label htmlFor="billing_day">Día de cobro *</Label>
               <Input id="billing_day" type="number" min={1} max={31} {...register("billing_day")} />
               {errors.billing_day && <p className="text-sm text-destructive">{errors.billing_day.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Plazo</Label>
+              <Select value={watch("term")} onValueChange={(v) => setValue("term", v as SupportSubscriptionInput["term"])}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Plazo">
+                    {(value: string | null) => TERM_OPTIONS.find((o) => o.value === value)?.label}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {TERM_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

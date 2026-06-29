@@ -92,7 +92,7 @@ export async function getProjectFinancials(projectId: string): Promise<ProjectFi
 
 export async function updateProject(id: string, input: ProjectInput): Promise<void> {
   const supabase = await createClient();
-  const { budget_sold, direct_cost, ...projectFields } = input;
+  const { budget_sold, direct_cost, is_financed, financed_total, financing_term_months, ...projectFields } = input;
 
   const { error } = await supabase.from("projects").update(projectFields).eq("id", id);
   if (error) throw error;
@@ -100,7 +100,7 @@ export async function updateProject(id: string, input: ProjectInput): Promise<vo
   if (budget_sold !== null && budget_sold !== undefined && direct_cost !== null && direct_cost !== undefined) {
     const { error: financialsError } = await supabase
       .from("project_financials")
-      .upsert({ project_id: id, budget_sold, direct_cost });
+      .upsert({ project_id: id, budget_sold, direct_cost, is_financed, financed_total, financing_term_months });
     if (financialsError) throw financialsError;
   }
 }

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RevenueDialog } from "@/components/erp/RevenueDialog";
@@ -9,6 +10,8 @@ import { formatCurrency } from "@/lib/utils";
 import type { RevenueInput } from "@/lib/validations/revenue";
 import type { RevenueWithRelations, InstallmentWithProject } from "@/services/revenues.service";
 import type { ProjectWithRelations } from "@/services/projects.service";
+
+const KIND_LABELS: Record<string, string> = { principal: "Principal", interest: "Interés" };
 
 export function RevenueList({
   revenues,
@@ -53,6 +56,7 @@ export function RevenueList({
             <TableRow>
               <TableHead>Proyecto</TableHead>
               <TableHead>Monto</TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead>Fecha</TableHead>
               <TableHead>Forma de pago</TableHead>
               <TableHead />
@@ -63,6 +67,9 @@ export function RevenueList({
               <TableRow key={revenue.id}>
                 <TableCell className="font-medium">{revenue.project?.name ?? "—"}</TableCell>
                 <TableCell>{formatCurrency(revenue.amount)}</TableCell>
+                <TableCell>
+                  <Badge variant={revenue.kind === "interest" ? "secondary" : "outline"}>{KIND_LABELS[revenue.kind]}</Badge>
+                </TableCell>
                 <TableCell>{new Date(`${revenue.received_at}T00:00:00`).toLocaleDateString("es-MX")}</TableCell>
                 <TableCell>{revenue.payment_method ?? "—"}</TableCell>
                 <TableCell>

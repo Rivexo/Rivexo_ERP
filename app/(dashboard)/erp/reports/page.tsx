@@ -29,7 +29,9 @@ export default async function ErpReportsPage() {
   const monthlyFixedCosts = summary.monthly_fixed_costs ?? 0;
   const currentMonthVariableExpenses = summary.current_month_variable_expenses ?? 0;
   const currentMonthRevenue = summary.current_month_revenue ?? 0;
+  const currentMonthFinancingIncome = summary.current_month_financing_income ?? 0;
   const activeMrr = summary.active_mrr ?? 0;
+  const activeArr = summary.active_arr ?? 0;
   const currentMonthNet = currentMonthRevenue - currentMonthVariableExpenses - monthlyFixedCosts;
 
   return (
@@ -40,7 +42,9 @@ export default async function ErpReportsPage() {
         <KpiCard title="Costos fijos mensuales" value={formatCurrency(monthlyFixedCosts)} />
         <KpiCard title="Gastos variables (mes)" value={formatCurrency(currentMonthVariableExpenses)} />
         <KpiCard title="Ingresos (mes)" value={formatCurrency(currentMonthRevenue)} />
+        <KpiCard title="Ingresos por financiamiento (mes)" value={formatCurrency(currentMonthFinancingIncome)} />
         <KpiCard title="MRR activo" value={formatCurrency(activeMrr)} />
+        <KpiCard title="ARR activo" value={formatCurrency(activeArr)} />
         <KpiCard title="Resultado neto (mes)" value={formatCurrency(currentMonthNet)} />
       </div>
 
