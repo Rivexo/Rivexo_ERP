@@ -4,6 +4,8 @@ import type { Database } from "@/types/database.types";
 export type CrmDashboard = Database["public"]["Views"]["v_crm_dashboard"]["Row"];
 export type DealsByStage = Database["public"]["Views"]["v_deals_by_stage"]["Row"];
 export type DealsWonLostMonthly = Database["public"]["Views"]["v_deals_won_lost_monthly"]["Row"];
+export type ErpFinancialSummary = Database["public"]["Views"]["v_erp_financial_summary"]["Row"];
+export type ErpMonthlyTrend = Database["public"]["Views"]["v_erp_monthly_trend"]["Row"];
 
 export async function getCrmDashboard(): Promise<CrmDashboard> {
   const supabase = await createClient();
@@ -22,6 +24,20 @@ export async function getDealsByStage(): Promise<DealsByStage[]> {
 export async function getDealsWonLostMonthly(): Promise<DealsWonLostMonthly[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("v_deals_won_lost_monthly").select("*").order("month");
+  if (error) throw error;
+  return data;
+}
+
+export async function getErpFinancialSummary(): Promise<ErpFinancialSummary> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("v_erp_financial_summary").select("*").single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getErpMonthlyTrend(): Promise<ErpMonthlyTrend[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("v_erp_monthly_trend").select("*").order("month");
   if (error) throw error;
   return data;
 }

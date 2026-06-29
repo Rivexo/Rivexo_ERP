@@ -5,10 +5,14 @@ import { usePathname } from "next/navigation";
 import {
   Building2,
   Contact,
+  DollarSign,
+  FileBarChart,
   FolderKanban,
   Handshake,
   KanbanSquare,
   LayoutDashboard,
+  ReceiptText,
+  Repeat,
   Tags,
   Users,
 } from "lucide-react";
@@ -24,7 +28,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { canManageSettings, canViewCrm, canViewProjects, type UserRole } from "@/lib/permissions";
+import { canAccessErp, canManageSettings, canViewCrm, canViewProjects, type UserRole } from "@/lib/permissions";
 
 type NavItem = {
   href: string;
@@ -73,6 +77,14 @@ export function Sidebar({ role }: { role: UserRole }) {
     { href: "/settings/users", label: "Usuarios", icon: Users },
     { href: "/settings/pipeline-stages", label: "Etapas de Pipeline", icon: KanbanSquare },
     { href: "/settings/business-lines", label: "Líneas de Negocio", icon: Tags },
+    { href: "/settings/expense-categories", label: "Categorías de Gasto", icon: Tags },
+  ];
+
+  const erpItems: NavItem[] = [
+    { href: "/erp/costs", label: "Costos", icon: ReceiptText },
+    { href: "/erp/revenues", label: "Ingresos", icon: DollarSign },
+    { href: "/erp/support", label: "Soporte", icon: Repeat },
+    { href: "/erp/reports", label: "Reportes", icon: FileBarChart },
   ];
 
   return (
@@ -109,6 +121,8 @@ export function Sidebar({ role }: { role: UserRole }) {
             ]}
           />
         )}
+
+        {canAccessErp(role) && <NavMenu title="Finanzas" items={erpItems} />}
 
         {canManageSettings(role) && <NavMenu title="Settings" items={settingsItems} />}
       </SidebarContent>

@@ -60,3 +60,9 @@ export function canManageProjectFinancials(role: UserRole): boolean {
 export function canConvertDealToProject(role: UserRole): boolean {
   return isAdminRole(role);
 }
+
+// ERP (costos, ingresos, soporte/MRR): el modulo mas restringido del sistema.
+// Solo founder/socio y finanzas tienen cualquier acceso; nadie mas ve una sola fila.
+export function canAccessErp(role: UserRole): boolean {
+  return isAdminRole(role) || role === "finance";
+}

@@ -491,6 +491,30 @@ export type Database = {
           },
         ]
       }
+      expense_categories: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          kind: Database["public"]["Enums"]["expense_category_kind"]
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind: Database["public"]["Enums"]["expense_category_kind"]
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          kind?: Database["public"]["Enums"]["expense_category_kind"]
+          name?: string
+        }
+        Relationships: []
+      }
       files: {
         Row: {
           bucket: string
@@ -534,6 +558,56 @@ export type Database = {
             columns: ["uploaded_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fixed_costs: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string
+          effective_date: string
+          end_date: string | null
+          frequency: Database["public"]["Enums"]["cost_frequency"]
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          effective_date?: string
+          end_date?: string | null
+          frequency?: Database["public"]["Enums"]["cost_frequency"]
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          effective_date?: string
+          end_date?: string | null
+          frequency?: Database["public"]["Enums"]["cost_frequency"]
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixed_costs_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
             referencedColumns: ["id"]
           },
         ]
@@ -593,6 +667,60 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monthly_support_subscriptions: {
+        Row: {
+          account_id: string
+          amount: number
+          billing_day: number
+          created_at: string
+          end_date: string | null
+          id: string
+          project_id: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          billing_day: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          project_id?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          billing_day?: number
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          project_id?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_support_subscriptions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_support_subscriptions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1036,6 +1164,54 @@ export type Database = {
           },
         ]
       }
+      revenues: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          payment_method: string | null
+          project_id: string | null
+          received_at: string
+          related_installment_id: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          project_id?: string | null
+          received_at?: string
+          related_installment_id?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          project_id?: string | null
+          received_at?: string
+          related_installment_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenues_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "revenues_related_installment_id_fkey"
+            columns: ["related_installment_id"]
+            isOneToOne: false
+            referencedRelation: "deal_payment_installments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_dependencies: {
         Row: {
           created_at: string
@@ -1174,6 +1350,51 @@ export type Database = {
           },
         ]
       }
+      variable_expenses: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string
+          description: string
+          expense_date: string
+          id: string
+          project_id: string | null
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          description: string
+          expense_date?: string
+          id?: string
+          project_id?: string | null
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          description?: string
+          expense_date?: string
+          id?: string
+          project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variable_expenses_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variable_expenses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       deal_financials_view: {
@@ -1224,6 +1445,23 @@ export type Database = {
         }
         Relationships: []
       }
+      v_erp_financial_summary: {
+        Row: {
+          active_mrr: number | null
+          current_month_revenue: number | null
+          current_month_variable_expenses: number | null
+          monthly_fixed_costs: number | null
+        }
+        Relationships: []
+      }
+      v_erp_monthly_trend: {
+        Row: {
+          month: string | null
+          revenue: number | null
+          variable_expenses: number | null
+        }
+        Relationships: []
+      }
       v_pipeline_summary: {
         Row: {
           total_billing: number | null
@@ -1251,7 +1489,9 @@ export type Database = {
     Enums: {
       account_status: "lead" | "prospect" | "customer" | "inactive"
       company_size: "micro" | "small" | "medium" | "large"
+      cost_frequency: "monthly" | "annual" | "one_time"
       decision_impact: "low" | "medium" | "high"
+      expense_category_kind: "fixed" | "variable"
       installment_status: "pending" | "invoiced" | "paid"
       payment_method:
         | "transferencia"
@@ -1267,6 +1507,7 @@ export type Database = {
         | "cancelled"
       risk_level: "low" | "medium" | "high"
       risk_status: "open" | "mitigated" | "closed"
+      subscription_status: "active" | "paused" | "cancelled"
       swot_type: "strength" | "weakness" | "opportunity" | "threat"
       task_priority: "low" | "medium" | "high" | "urgent"
       task_status: "todo" | "in_progress" | "in_review" | "done" | "blocked"
@@ -1409,7 +1650,9 @@ export const Constants = {
     Enums: {
       account_status: ["lead", "prospect", "customer", "inactive"],
       company_size: ["micro", "small", "medium", "large"],
+      cost_frequency: ["monthly", "annual", "one_time"],
       decision_impact: ["low", "medium", "high"],
+      expense_category_kind: ["fixed", "variable"],
       installment_status: ["pending", "invoiced", "paid"],
       payment_method: [
         "transferencia",
@@ -1427,6 +1670,7 @@ export const Constants = {
       ],
       risk_level: ["low", "medium", "high"],
       risk_status: ["open", "mitigated", "closed"],
+      subscription_status: ["active", "paused", "cancelled"],
       swot_type: ["strength", "weakness", "opportunity", "threat"],
       task_priority: ["low", "medium", "high", "urgent"],
       task_status: ["todo", "in_progress", "in_review", "done", "blocked"],
