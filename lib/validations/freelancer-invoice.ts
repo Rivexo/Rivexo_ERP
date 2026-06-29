@@ -7,6 +7,7 @@ export const freelancerInvoiceSchema = z.object({
   freelancer_name: z.string().min(1, "El nombre del freelancer es requerido"),
   amount: z.coerce.number().min(0, "El monto debe ser mayor o igual a 0"),
   invoice_date: z.string().min(1, "La fecha es requerida"),
+  due_date: z.preprocess(emptyToNull, z.string().nullable().optional()),
   status: z.enum(["pending", "paid"]),
   notes: z.preprocess(emptyToNull, z.string().nullable().optional()),
 });

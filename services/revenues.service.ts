@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 import type { RevenueInput } from "@/lib/validations/revenue";
+import { postJournalEntry } from "@/services/accounting.service";
 
 export type Revenue = Database["public"]["Tables"]["revenues"]["Row"];
 export type DealPaymentInstallment = Database["public"]["Tables"]["deal_payment_installments"]["Row"];
@@ -40,8 +41,22 @@ export async function listAllInstallmentsWithProject(): Promise<InstallmentWithP
 
 export async function createRevenue(input: RevenueInput): Promise<void> {
   const supabase = await createClient();
-  const { error } = await supabase.from("revenues").insert(input);
+  const { data, error } = await supabase.from("revenues").insert(input).select("id").single();
   if (error) throw error;
+
+  if (input.related_installment_id) {
+    const { error: installmentError } = await supabase
+      .from("deal_payment_installments")
+      .update({ status: "paid", paid_at: new Date().toISOString() })
+      .eq("id", input.related_installment_id);
+    if (installmentError) throw installmentError;
+  }
+
+  const revenueAccountCode = input.kind === "interest" ? "4300" : "4100";
+  await postJournalEntry(input.received_at, `Cobro de ingreso (${input.kind})`, "revenue", data.id, [
+    { accountCode: "1100", debit: input.amount },
+    { accountCode: revenueAccountCode, credit: input.amount },
+  ]);
 }
 
 export async function updateRevenue(id: string, input: RevenueInput): Promise<void> {

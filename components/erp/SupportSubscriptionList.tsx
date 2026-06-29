@@ -23,6 +23,11 @@ const TERM_LABELS: Record<string, string> = {
   "3_years": "3 años",
   indefinite: "Indefinido",
 };
+const PAYMENT_METHOD_LABELS: Record<string, string> = { stripe: "Stripe", transferencia: "Transferencia" };
+
+function monthlyEquivalent(amount: number, billingCycle: string): number {
+  return billingCycle === "annual" ? amount / 12 : amount;
+}
 
 export function SupportSubscriptionList({
   subscriptions,
@@ -70,12 +75,16 @@ export function SupportSubscriptionList({
               <TableHead>Monto</TableHead>
               <TableHead>Día de cobro</TableHead>
               <TableHead>Plazo</TableHead>
+              <TableHead>Método</TableHead>
+              <TableHead>Margen (mes)</TableHead>
               <TableHead>Estatus</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {subscriptions.map((sub) => (
+            {subscriptions.map((sub) => {
+              const margin = monthlyEquivalent(sub.amount, sub.billing_cycle) - sub.direct_cost;
+              return (
               <TableRow key={sub.id}>
                 <TableCell className="font-medium">{sub.account?.name ?? "—"}</TableCell>
                 <TableCell>{sub.project?.name ?? "—"}</TableCell>
@@ -85,6 +94,8 @@ export function SupportSubscriptionList({
                 </TableCell>
                 <TableCell>{sub.billing_day}</TableCell>
                 <TableCell>{TERM_LABELS[sub.term]}</TableCell>
+                <TableCell>{PAYMENT_METHOD_LABELS[sub.payment_method]}</TableCell>
+                <TableCell className={margin < 0 ? "text-destructive" : ""}>{formatCurrency(margin)}</TableCell>
                 <TableCell>
                   <Badge variant={STATUS_VARIANT[sub.status]}>{STATUS_LABELS[sub.status]}</Badge>
                 </TableCell>
@@ -107,7 +118,8 @@ export function SupportSubscriptionList({
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       )}

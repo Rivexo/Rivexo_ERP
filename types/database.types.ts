@@ -185,6 +185,33 @@ export type Database = {
         }
         Relationships: []
       }
+      chart_of_accounts: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          type: Database["public"]["Enums"]["account_type"]
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          type: Database["public"]["Enums"]["account_type"]
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: Database["public"]["Enums"]["account_type"]
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
           author_id: string | null
@@ -625,6 +652,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          due_date: string | null
           freelancer_name: string
           id: string
           invoice_date: string
@@ -637,6 +665,7 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string
+          due_date?: string | null
           freelancer_name: string
           id?: string
           invoice_date?: string
@@ -649,6 +678,7 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          due_date?: string | null
           freelancer_name?: string
           id?: string
           invoice_date?: string
@@ -688,6 +718,83 @@ export type Database = {
           order_index?: number
         }
         Relationships: []
+      }
+      journal_entries: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          entry_date: string
+          id: string
+          source_id: string | null
+          source_type: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          entry_date?: string
+          id?: string
+          source_id?: string | null
+          source_type?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          entry_date?: string
+          id?: string
+          source_id?: string | null
+          source_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_entries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      journal_lines: {
+        Row: {
+          account_id: string
+          credit: number
+          debit: number
+          id: string
+          journal_entry_id: string
+        }
+        Insert: {
+          account_id: string
+          credit?: number
+          debit?: number
+          id?: string
+          journal_entry_id: string
+        }
+        Update: {
+          account_id?: string
+          credit?: number
+          debit?: number
+          id?: string
+          journal_entry_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "journal_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "chart_of_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "journal_lines_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       links: {
         Row: {
@@ -734,8 +841,10 @@ export type Database = {
           billing_cycle: Database["public"]["Enums"]["support_billing_cycle"]
           billing_day: number
           created_at: string
+          direct_cost: number
           end_date: string | null
           id: string
+          payment_method: Database["public"]["Enums"]["support_payment_method"]
           project_id: string | null
           start_date: string
           status: Database["public"]["Enums"]["subscription_status"]
@@ -748,8 +857,10 @@ export type Database = {
           billing_cycle?: Database["public"]["Enums"]["support_billing_cycle"]
           billing_day: number
           created_at?: string
+          direct_cost?: number
           end_date?: string | null
           id?: string
+          payment_method?: Database["public"]["Enums"]["support_payment_method"]
           project_id?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["subscription_status"]
@@ -762,8 +873,10 @@ export type Database = {
           billing_cycle?: Database["public"]["Enums"]["support_billing_cycle"]
           billing_day?: number
           created_at?: string
+          direct_cost?: number
           end_date?: string | null
           id?: string
+          payment_method?: Database["public"]["Enums"]["support_payment_method"]
           project_id?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["subscription_status"]
@@ -1286,6 +1399,47 @@ export type Database = {
           },
         ]
       }
+      support_billing_records: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string
+          id: string
+          paid_at: string | null
+          period: string
+          status: Database["public"]["Enums"]["support_billing_status"]
+          subscription_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date: string
+          id?: string
+          paid_at?: string | null
+          period: string
+          status?: Database["public"]["Enums"]["support_billing_status"]
+          subscription_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string
+          id?: string
+          paid_at?: string | null
+          period?: string
+          status?: Database["public"]["Enums"]["support_billing_status"]
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_billing_records_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "monthly_support_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_dependencies: {
         Row: {
           created_at: string
@@ -1523,6 +1677,7 @@ export type Database = {
         Row: {
           active_arr: number | null
           active_mrr: number | null
+          active_support_margin: number | null
           current_month_financing_income: number | null
           current_month_revenue: number | null
           current_month_variable_expenses: number | null
@@ -1564,6 +1719,7 @@ export type Database = {
     }
     Enums: {
       account_status: "lead" | "prospect" | "customer" | "inactive"
+      account_type: "asset" | "liability" | "equity" | "revenue" | "expense"
       company_size: "micro" | "small" | "medium" | "large"
       cost_frequency: "monthly" | "annual" | "one_time"
       decision_impact: "low" | "medium" | "high"
@@ -1587,6 +1743,8 @@ export type Database = {
       risk_status: "open" | "mitigated" | "closed"
       subscription_status: "active" | "paused" | "cancelled"
       support_billing_cycle: "monthly" | "annual"
+      support_billing_status: "pending" | "paid"
+      support_payment_method: "stripe" | "transferencia"
       support_term: "6_months" | "1_year" | "3_years" | "indefinite"
       swot_type: "strength" | "weakness" | "opportunity" | "threat"
       task_priority: "low" | "medium" | "high" | "urgent"
@@ -1729,6 +1887,7 @@ export const Constants = {
   public: {
     Enums: {
       account_status: ["lead", "prospect", "customer", "inactive"],
+      account_type: ["asset", "liability", "equity", "revenue", "expense"],
       company_size: ["micro", "small", "medium", "large"],
       cost_frequency: ["monthly", "annual", "one_time"],
       decision_impact: ["low", "medium", "high"],
@@ -1754,6 +1913,8 @@ export const Constants = {
       risk_status: ["open", "mitigated", "closed"],
       subscription_status: ["active", "paused", "cancelled"],
       support_billing_cycle: ["monthly", "annual"],
+      support_billing_status: ["pending", "paid"],
+      support_payment_method: ["stripe", "transferencia"],
       support_term: ["6_months", "1_year", "3_years", "indefinite"],
       swot_type: ["strength", "weakness", "opportunity", "threat"],
       task_priority: ["low", "medium", "high", "urgent"],

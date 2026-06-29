@@ -35,6 +35,11 @@ const BILLING_CYCLE_OPTIONS = [
   { value: "annual", label: "Anual (ARR)" },
 ] as const;
 
+const PAYMENT_METHOD_OPTIONS = [
+  { value: "stripe", label: "Stripe" },
+  { value: "transferencia", label: "Transferencia" },
+] as const;
+
 export function SupportSubscriptionDialog({
   subscription,
   accounts,
@@ -67,6 +72,8 @@ export function SupportSubscriptionDialog({
       status: subscription?.status ?? "active",
       term: subscription?.term ?? "indefinite",
       billing_cycle: subscription?.billing_cycle ?? "monthly",
+      payment_method: subscription?.payment_method ?? "transferencia",
+      direct_cost: subscription?.direct_cost ?? 0,
       start_date: subscription?.start_date ?? new Date().toISOString().slice(0, 10),
       end_date: subscription?.end_date ?? null,
     },
@@ -158,6 +165,33 @@ export function SupportSubscriptionDialog({
               <Label htmlFor="billing_day">Día de cobro *</Label>
               <Input id="billing_day" type="number" min={1} max={31} {...register("billing_day")} />
               {errors.billing_day && <p className="text-sm text-destructive">{errors.billing_day.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="direct_cost">Costo directo mensual</Label>
+              <Input id="direct_cost" type="number" step="0.01" min={0} {...register("direct_cost")} />
+              {errors.direct_cost && <p className="text-sm text-destructive">{errors.direct_cost.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Método de pago</Label>
+              <Select
+                value={watch("payment_method")}
+                onValueChange={(v) => setValue("payment_method", v as SupportSubscriptionInput["payment_method"])}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Método de pago">
+                    {(value: string | null) => PAYMENT_METHOD_OPTIONS.find((o) => o.value === value)?.label}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">

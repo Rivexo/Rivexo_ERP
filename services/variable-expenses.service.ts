@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 import type { VariableExpenseInput } from "@/lib/validations/variable-expense";
+import { postJournalEntry } from "@/services/accounting.service";
 
 export type VariableExpense = Database["public"]["Tables"]["variable_expenses"]["Row"];
 
@@ -21,8 +22,14 @@ export async function listVariableExpenses(): Promise<VariableExpenseWithRelatio
 
 export async function createVariableExpense(input: VariableExpenseInput): Promise<void> {
   const supabase = await createClient();
-  const { error } = await supabase.from("variable_expenses").insert(input);
+  const { data, error } = await supabase.from("variable_expenses").insert(input).select("id").single();
   if (error) throw error;
+
+  // Se asume pagado en efectivo al momento de registrarse (igual que hoy).
+  await postJournalEntry(input.expense_date, `Gasto variable: ${input.description}`, "variable_expense", data.id, [
+    { accountCode: "5300", debit: input.amount },
+    { accountCode: "1100", credit: input.amount },
+  ]);
 }
 
 export async function updateVariableExpense(id: string, input: VariableExpenseInput): Promise<void> {

@@ -1,9 +1,11 @@
-import { LogOut } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import Link from "next/link";
+import { LogOut, UserRound } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -32,6 +34,7 @@ export function Topbar({ profile }: { profile: Profile }) {
           render={
             <button className="flex items-center gap-2 rounded-md px-2 py-1.5 outline-hidden hover:bg-accent">
               <Avatar className="size-8">
+                {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.full_name} />}
                 <AvatarFallback>{initials(profile.full_name)}</AvatarFallback>
               </Avatar>
               <span className="text-sm font-medium">{profile.full_name}</span>
@@ -39,21 +42,28 @@ export function Topbar({ profile }: { profile: Profile }) {
           }
         />
         <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>
-            <p className="font-medium">{profile.full_name}</p>
-            <p className="text-xs font-normal text-muted-foreground">{profile.email}</p>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <div className="px-2 py-1.5">
-            <Badge variant="secondary">{roleLabel(profile.role)}</Badge>
-          </div>
-          <DropdownMenuSeparator />
-          <form action={signOut}>
-            <DropdownMenuItem render={<button type="submit" className="w-full" />}>
-              <LogOut className="size-4" />
-              Cerrar sesión
+          <DropdownMenuGroup>
+            <DropdownMenuLabel>
+              <p className="font-medium">{profile.full_name}</p>
+              <p className="text-xs font-normal text-muted-foreground">{profile.email}</p>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5">
+              <Badge variant="secondary">{roleLabel(profile.role)}</Badge>
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem render={<Link href="/profile" />}>
+              <UserRound className="size-4" />
+              Mi perfil
             </DropdownMenuItem>
-          </form>
+            <DropdownMenuSeparator />
+            <form action={signOut}>
+              <DropdownMenuItem render={<button type="submit" className="w-full" />}>
+                <LogOut className="size-4" />
+                Cerrar sesión
+              </DropdownMenuItem>
+            </form>
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>

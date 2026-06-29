@@ -7,6 +7,7 @@ import {
   deleteSupportSubscription,
   updateSupportSubscription,
 } from "@/services/support-subscriptions.service";
+import { generateMonthlyBillingRecords, markSupportBillingPaid } from "@/services/support-billing.service";
 
 export async function createSupportSubscriptionAction(input: SupportSubscriptionInput): Promise<void> {
   const parsed = supportSubscriptionSchema.parse(input);
@@ -22,5 +23,16 @@ export async function updateSupportSubscriptionAction(id: string, input: Support
 
 export async function deleteSupportSubscriptionAction(id: string): Promise<void> {
   await deleteSupportSubscription(id);
+  revalidatePath("/erp/support");
+}
+
+export async function generateMonthlyBillingRecordsAction(): Promise<number> {
+  const created = await generateMonthlyBillingRecords();
+  revalidatePath("/erp/support");
+  return created;
+}
+
+export async function markSupportBillingPaidAction(id: string): Promise<void> {
+  await markSupportBillingPaid(id);
   revalidatePath("/erp/support");
 }

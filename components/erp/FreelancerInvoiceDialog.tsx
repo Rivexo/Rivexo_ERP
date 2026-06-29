@@ -100,6 +100,10 @@ export function FreelancerInvoiceDialog({
               <Label htmlFor="invoice_date">Fecha *</Label>
               <Input id="invoice_date" name="invoice_date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} required />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="due_date">Vencimiento</Label>
+              <Input id="due_date" name="due_date" type="date" />
+            </div>
           </div>
 
           <div className="space-y-2">

@@ -32,6 +32,7 @@ export default async function ErpReportsPage() {
   const currentMonthFinancingIncome = summary.current_month_financing_income ?? 0;
   const activeMrr = summary.active_mrr ?? 0;
   const activeArr = summary.active_arr ?? 0;
+  const activeSupportMargin = summary.active_support_margin ?? 0;
   const currentMonthNet = currentMonthRevenue - currentMonthVariableExpenses - monthlyFixedCosts;
 
   return (
@@ -45,6 +46,7 @@ export default async function ErpReportsPage() {
         <KpiCard title="Ingresos por financiamiento (mes)" value={formatCurrency(currentMonthFinancingIncome)} />
         <KpiCard title="MRR activo" value={formatCurrency(activeMrr)} />
         <KpiCard title="ARR activo" value={formatCurrency(activeArr)} />
+        <KpiCard title="Margen de soporte (mes)" value={formatCurrency(activeSupportMargin)} />
         <KpiCard title="Resultado neto (mes)" value={formatCurrency(currentMonthNet)} />
       </div>
 

@@ -4,11 +4,12 @@ import { Folder } from "lucide-react";
 import { DealForm } from "@/components/crm/DealForm";
 import { DealFinancialsPanel } from "@/components/crm/DealFinancialsPanel";
 import { ConvertToProjectButton } from "@/components/crm/ConvertToProjectButton";
+import { PaymentScheduleList } from "@/components/crm/PaymentScheduleList";
 import { ContractsPanel } from "@/components/shared/ContractsPanel";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ConfirmDeleteButton } from "@/components/shared/ConfirmDeleteButton";
 import { Button } from "@/components/ui/button";
-import { canConvertDealToProject, canManageCrm, canViewFinancials } from "@/lib/permissions";
+import { canConvertDealToProject, canManageCrm, canViewCrm, canViewFinancials } from "@/lib/permissions";
 import { getCurrentProfile } from "@/services/profiles.service";
 import { listProfiles } from "@/services/profiles.service";
 import { listAccountOptions } from "@/services/accounts.service";
@@ -18,7 +19,14 @@ import { listPipelineStages } from "@/services/pipeline-stages.service";
 import { getDeal, getDealFinancials } from "@/services/deals.service";
 import { getProjectByDealId } from "@/services/projects.service";
 import { listFiles } from "@/services/files.service";
+import { listInstallmentsByDeal } from "@/services/installments.service";
 import { convertDealToProjectAction, deleteDealAction, updateDealAction } from "../actions";
+import {
+  createInstallmentAction,
+  deleteInstallmentAction,
+  generateFinancingScheduleAction,
+  updateInstallmentAction,
+} from "../actions";
 import { deleteContractAction, uploadContractAction } from "../contracts-actions";
 
 export default async function DealDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -26,7 +34,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
   const deal = await getDeal(id);
   if (!deal) notFound();
 
-  const [profile, accounts, contacts, businessLines, owners, stages, financials, existingProject, contracts] =
+  const [profile, accounts, contacts, businessLines, owners, stages, financials, existingProject, contracts, installments] =
     await Promise.all([
       getCurrentProfile(),
       listAccountOptions(),
@@ -37,11 +45,14 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
       getDealFinancials(id),
       getProjectByDealId(id),
       listFiles("deal", id),
+      listInstallmentsByDeal(id),
     ]);
 
   const showFinancials = profile ? canViewFinancials(profile.role) : false;
   const canConvert = profile ? canConvertDealToProject(profile.role) : false;
   const canManageContracts = profile ? canManageCrm(profile.role) : false;
+  const showPaymentSchedule = profile ? canViewCrm(profile.role) : false;
+  const canManagePaymentSchedule = profile ? canManageCrm(profile.role) : false;
 
   return (
     <div className="space-y-6">
@@ -81,6 +92,21 @@ export default async function DealDetailPage({ params }: { params: Promise<{ id:
         initialEstimatedDirectCost={financials?.estimated_direct_cost}
         onSubmit={updateDealAction.bind(null, id)}
       />
+
+      {showPaymentSchedule && (
+        <div>
+          <h3 className="mb-2 text-sm font-medium">Plan de pagos</h3>
+          <PaymentScheduleList
+            installments={installments}
+            canEdit={canManagePaymentSchedule}
+            showGenerateSchedule={deal.is_financed}
+            onCreate={createInstallmentAction.bind(null, id)}
+            onUpdate={updateInstallmentAction.bind(null, id)}
+            onDelete={deleteInstallmentAction.bind(null, id)}
+            onGenerateSchedule={generateFinancingScheduleAction.bind(null, id)}
+          />
+        </div>
+      )}
 
       <ContractsPanel
         contracts={contracts}

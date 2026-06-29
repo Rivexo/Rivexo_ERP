@@ -4,7 +4,15 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { dealSchema, type DealInput } from "@/lib/validations/deal";
+import { installmentSchema, type InstallmentInput } from "@/lib/validations/installment";
 import { createDeal, softDeleteDeal, updateDeal, updateDealStage } from "@/services/deals.service";
+import {
+  createInstallment,
+  deleteInstallment,
+  generateFinancingSchedule,
+  updateInstallment,
+} from "@/services/installments.service";
+import { getProjectByDealId } from "@/services/projects.service";
 
 export async function createDealAction(input: DealInput): Promise<{ id: string }> {
   const parsed = dealSchema.parse(input);
@@ -52,4 +60,33 @@ export async function convertDealToProjectAction(dealId: string): Promise<void> 
   revalidatePath(`/crm/deals/${dealId}`);
   revalidatePath("/projects");
   redirect(`/projects/${data}`);
+}
+
+async function revalidateInstallmentPaths(dealId: string): Promise<void> {
+  revalidatePath(`/crm/deals/${dealId}`);
+  const project = await getProjectByDealId(dealId);
+  if (project) revalidatePath(`/projects/${project.id}`);
+  revalidatePath("/erp/accounting/receivables");
+}
+
+export async function createInstallmentAction(dealId: string, input: InstallmentInput): Promise<void> {
+  const parsed = installmentSchema.parse(input);
+  await createInstallment(dealId, parsed);
+  await revalidateInstallmentPaths(dealId);
+}
+
+export async function updateInstallmentAction(dealId: string, id: string, input: InstallmentInput): Promise<void> {
+  const parsed = installmentSchema.parse(input);
+  await updateInstallment(id, parsed);
+  await revalidateInstallmentPaths(dealId);
+}
+
+export async function deleteInstallmentAction(dealId: string, id: string): Promise<void> {
+  await deleteInstallment(id);
+  await revalidateInstallmentPaths(dealId);
+}
+
+export async function generateFinancingScheduleAction(dealId: string): Promise<void> {
+  await generateFinancingSchedule(dealId);
+  await revalidateInstallmentPaths(dealId);
 }

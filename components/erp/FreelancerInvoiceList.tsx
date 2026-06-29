@@ -32,6 +32,8 @@ export function FreelancerInvoiceList({
 }) {
   const router = useRouter();
 
+  const today = new Date().toISOString().slice(0, 10);
+
   async function handleToggle(id: string, current: string) {
     await onToggleStatus(id, current === "paid" ? "pending" : "paid");
     router.refresh();
@@ -80,11 +82,16 @@ export function FreelancerInvoiceList({
                   <TableCell>{formatCurrency(invoice.amount)}</TableCell>
                   <TableCell>{new Date(`${invoice.invoice_date}T00:00:00`).toLocaleDateString("es-MX")}</TableCell>
                   <TableCell>
-                    <button onClick={() => handleToggle(invoice.id, invoice.status)}>
-                      <Badge variant={invoice.status === "paid" ? "secondary" : "outline"}>
-                        {STATUS_LABELS[invoice.status]}
-                      </Badge>
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => handleToggle(invoice.id, invoice.status)}>
+                        <Badge variant={invoice.status === "paid" ? "secondary" : "outline"}>
+                          {STATUS_LABELS[invoice.status]}
+                        </Badge>
+                      </button>
+                      {invoice.status === "pending" && invoice.due_date && invoice.due_date < today && (
+                        <Badge variant="destructive">Vencida</Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {file?.url ? (

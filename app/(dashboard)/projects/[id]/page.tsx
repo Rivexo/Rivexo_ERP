@@ -4,7 +4,15 @@ import { ProjectFinancialsPanel } from "@/components/projects/ProjectFinancialsP
 import { CommentsPanel } from "@/components/shared/CommentsPanel";
 import { LinksPanel } from "@/components/shared/LinksPanel";
 import { FreelancerInvoiceList } from "@/components/erp/FreelancerInvoiceList";
-import { isAdminRole, canAccessErp, canManageProjectFinancials, canViewProjectFinancials } from "@/lib/permissions";
+import { PaymentScheduleList } from "@/components/crm/PaymentScheduleList";
+import {
+  isAdminRole,
+  canAccessErp,
+  canManageCrm,
+  canManageProjectFinancials,
+  canViewCrm,
+  canViewProjectFinancials,
+} from "@/lib/permissions";
 import { getCurrentProfile, listProfiles } from "@/services/profiles.service";
 import { listBusinessLines } from "@/services/business-lines.service";
 import { getProject, getProjectFinancials } from "@/services/projects.service";
@@ -12,12 +20,19 @@ import { listComments } from "@/services/comments.service";
 import { listLinks } from "@/services/links.service";
 import { listFreelancerInvoicesByProject } from "@/services/freelancer-invoices.service";
 import { listFilesByEntityIds } from "@/services/files.service";
+import { listInstallmentsByDeal } from "@/services/installments.service";
 import { createCommentAction, createLinkAction, deleteCommentAction, deleteLinkAction, updateProjectAction } from "../actions";
 import {
   createFreelancerInvoiceAction,
   deleteFreelancerInvoiceAction,
   toggleFreelancerInvoiceStatusAction,
 } from "../../erp/freelancers/actions";
+import {
+  createInstallmentAction,
+  deleteInstallmentAction,
+  generateFinancingScheduleAction,
+  updateInstallmentAction,
+} from "../../crm/deals/actions";
 
 export default async function ProjectOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -36,12 +51,15 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
   const showFinancials = profile ? canViewProjectFinancials(profile.role) : false;
   const manageFinancials = profile ? canManageProjectFinancials(profile.role) : false;
   const showFreelancerInvoices = profile ? canAccessErp(profile.role) : false;
+  const showPaymentSchedule = profile ? canViewCrm(profile.role) : false;
+  const canManagePaymentSchedule = profile ? canManageCrm(profile.role) : false;
   const projectManagers = profiles.filter((p) => p.role === "project_manager" || isAdminRole(p.role));
 
   const freelancerInvoices = showFreelancerInvoices ? await listFreelancerInvoicesByProject(id) : [];
   const freelancerFiles = showFreelancerInvoices
     ? await listFilesByEntityIds("freelancer_invoice", freelancerInvoices.map((i) => i.id))
     : {};
+  const installments = showPaymentSchedule ? await listInstallmentsByDeal(project.deal_id) : [];
 
   return (
     <div className="space-y-6">
@@ -69,6 +87,21 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
         )}
         <LinksPanel entityType="project" entityId={id} links={links} onCreate={createLinkAction} onDelete={deleteLinkAction} />
       </div>
+
+      {showPaymentSchedule && (
+        <div>
+          <h3 className="mb-2 text-sm font-medium">Plan de pagos</h3>
+          <PaymentScheduleList
+            installments={installments}
+            canEdit={canManagePaymentSchedule}
+            showGenerateSchedule={financials?.is_financed ?? false}
+            onCreate={createInstallmentAction.bind(null, project.deal_id)}
+            onUpdate={updateInstallmentAction.bind(null, project.deal_id)}
+            onDelete={deleteInstallmentAction.bind(null, project.deal_id)}
+            onGenerateSchedule={generateFinancingScheduleAction.bind(null, project.deal_id)}
+          />
+        </div>
+      )}
 
       {showFreelancerInvoices && (
         <div>

@@ -15,6 +15,7 @@ export async function createFreelancerInvoiceAction(formData: FormData): Promise
     freelancer_name: formData.get("freelancer_name"),
     amount: formData.get("amount"),
     invoice_date: formData.get("invoice_date"),
+    due_date: formData.get("due_date"),
     status: "pending",
     notes: null,
   });

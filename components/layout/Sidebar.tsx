@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BookText,
   Building2,
   Contact,
   DollarSign,
@@ -11,11 +12,16 @@ import {
   HandCoins,
   Handshake,
   KanbanSquare,
+  Landmark,
   LayoutDashboard,
   ReceiptText,
   Repeat,
+  Scale,
   Tags,
+  TrendingDown,
+  TrendingUp,
   Users,
+  Wallet,
 } from "lucide-react";
 import {
   Sidebar as SidebarRoot,
@@ -89,6 +95,15 @@ export function Sidebar({ role }: { role: UserRole }) {
     { href: "/erp/reports", label: "Reportes", icon: FileBarChart },
   ];
 
+  const accountingItems: NavItem[] = [
+    { href: "/erp/accounting/journal", label: "Diario", icon: BookText },
+    { href: "/erp/accounting/income-statement", label: "Estado de Resultados", icon: TrendingUp },
+    { href: "/erp/accounting/balance-sheet", label: "Balance General", icon: Scale },
+    { href: "/erp/accounting/cash-flow", label: "Flujo de Efectivo", icon: Wallet },
+    { href: "/erp/accounting/receivables", label: "Cuentas por Cobrar", icon: Landmark },
+    { href: "/erp/accounting/payables", label: "Cuentas por Pagar", icon: TrendingDown },
+  ];
+
   return (
     <SidebarRoot collapsible="icon">
       <SidebarHeader>
@@ -125,6 +140,8 @@ export function Sidebar({ role }: { role: UserRole }) {
         )}
 
         {canAccessErp(role) && <NavMenu title="Finanzas" items={erpItems} />}
+
+        {canAccessErp(role) && <NavMenu title="Contabilidad" items={accountingItems} />}
 
         {canManageSettings(role) && <NavMenu title="Settings" items={settingsItems} />}
       </SidebarContent>
