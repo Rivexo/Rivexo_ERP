@@ -39,6 +39,77 @@ export async function listAllInstallmentsWithProject(): Promise<InstallmentWithP
     .map(({ deal, ...rest }) => ({ ...rest, project_id: deal!.project!.id }));
 }
 
+export type ForecastRow = {
+  id: string;
+  deal_id: string;
+  deal_name: string;
+  account_name: string;
+  label: string;
+  amount: number;
+  due_date: string | null;
+  is_overdue: boolean;
+  status: "pending" | "invoiced" | "paid";
+};
+
+export type ForecastSummary = {
+  total_committed: number;
+  due_this_month: number;
+  overdue: number;
+  rows: ForecastRow[];
+};
+
+export async function getRevenueForecast(): Promise<ForecastSummary> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("deal_payment_installments")
+    .select("id, deal_id, label, amount, due_date, status, deal:deals(name, account:accounts(name), stage:pipeline_stages(is_won))")
+    .in("status", ["pending", "invoiced"])
+    .order("due_date", { ascending: true, nullsFirst: false });
+  if (error) throw error;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const thisMonthStart = today.slice(0, 7) + "-01";
+  const nextMonthStart = (() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + 1, 1);
+    return d.toISOString().slice(0, 10);
+  })();
+
+  type Raw = {
+    id: string;
+    deal_id: string;
+    label: string;
+    amount: number;
+    due_date: string | null;
+    status: string;
+    deal: { name: string; account: { name: string } | null; stage: { is_won: boolean } | null } | null;
+  };
+
+  const wonRows = (data as unknown as Raw[])
+    .filter((r) => r.deal?.stage?.is_won === true)
+    .map((r) => ({
+      id: r.id,
+      deal_id: r.deal_id,
+      deal_name: r.deal?.name ?? "—",
+      account_name: r.deal?.account?.name ?? "—",
+      label: r.label,
+      amount: r.amount,
+      due_date: r.due_date,
+      is_overdue: !!r.due_date && r.due_date < today,
+      status: r.status as ForecastRow["status"],
+    }));
+
+  const total_committed = wonRows.reduce((s, r) => s + r.amount, 0);
+  const due_this_month = wonRows
+    .filter((r) => r.due_date && r.due_date >= thisMonthStart && r.due_date < nextMonthStart)
+    .reduce((s, r) => s + r.amount, 0);
+  const overdue = wonRows
+    .filter((r) => r.is_overdue)
+    .reduce((s, r) => s + r.amount, 0);
+
+  return { total_committed, due_this_month, overdue, rows: wonRows };
+}
+
 export async function createRevenue(input: RevenueInput): Promise<void> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("revenues").insert(input).select("id").single();
