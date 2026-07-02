@@ -3,9 +3,9 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { dealSchema, type DealInput } from "@/lib/validations/deal";
+import { dealSchema, wonPaymentSchema, type DealInput, type WonPaymentInput } from "@/lib/validations/deal";
 import { installmentSchema, type InstallmentInput } from "@/lib/validations/installment";
-import { createDeal, softDeleteDeal, updateDeal, updateDealStage } from "@/services/deals.service";
+import { createDeal, softDeleteDeal, updateDeal, updateDealStage, updateDealWonPayment } from "@/services/deals.service";
 import {
   createInstallment,
   deleteInstallment,
@@ -51,6 +51,20 @@ export async function updateDealStageAction(
   revalidatePath("/crm/pipeline");
   revalidatePath("/crm/deals");
   revalidatePath(`/crm/deals/${dealId}`);
+}
+
+export async function updateDealStageWonAction(
+  dealId: string,
+  stage: { id: string; is_won: boolean; is_lost: boolean },
+  payment: WonPaymentInput,
+): Promise<void> {
+  const parsed = wonPaymentSchema.parse(payment);
+  await updateDealStage(dealId, stage);
+  await updateDealWonPayment(dealId, parsed);
+  revalidatePath("/crm/pipeline");
+  revalidatePath("/crm/deals");
+  revalidatePath(`/crm/deals/${dealId}`);
+  revalidatePath("/erp/accounting/receivables");
 }
 
 export async function convertDealToProjectAction(dealId: string): Promise<void> {

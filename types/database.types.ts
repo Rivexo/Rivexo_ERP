@@ -409,7 +409,9 @@ export type Database = {
           financed_total: number | null
           financing_term_months: number | null
           id: string
+          interest_rate: number | null
           is_financed: boolean
+          is_msi: boolean
           iva_rate: number
           lost_reason: string | null
           monthly_support_amount: number | null
@@ -435,7 +437,9 @@ export type Database = {
           financed_total?: number | null
           financing_term_months?: number | null
           id?: string
+          interest_rate?: number | null
           is_financed?: boolean
+          is_msi?: boolean
           iva_rate?: number
           lost_reason?: string | null
           monthly_support_amount?: number | null
@@ -461,7 +465,9 @@ export type Database = {
           financed_total?: number | null
           financing_term_months?: number | null
           id?: string
+          interest_rate?: number | null
           is_financed?: boolean
+          is_msi?: boolean
           iva_rate?: number
           lost_reason?: string | null
           monthly_support_amount?: number | null
@@ -1695,8 +1701,10 @@ export type Database = {
       }
       v_pipeline_summary: {
         Row: {
-          total_billing: number | null
-          total_contribution_margin: number | null
+          tcv_real: number | null
+          tcv_potencial: number | null
+          margin_real: number | null
+          margin_potencial: number | null
         }
         Relationships: []
       }

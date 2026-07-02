@@ -6,6 +6,15 @@ import { listPipelineStages } from "@/services/pipeline-stages.service";
 import { getCurrentProfile } from "@/services/profiles.service";
 import { formatCurrency } from "@/lib/utils";
 
+function KpiTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border bg-muted/30 px-4 py-2">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="text-lg font-semibold">{value}</p>
+    </div>
+  );
+}
+
 export default async function PipelinePage() {
   const [stages, deals, summary, profile] = await Promise.all([
     listPipelineStages(),
@@ -21,15 +30,13 @@ export default async function PipelinePage() {
       <PageHeader title="Pipeline" description="Arrastra los deals entre etapas" />
 
       <div className="mb-4 flex flex-wrap gap-4">
-        <div className="rounded-md border bg-muted/30 px-4 py-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Facturación total</p>
-          <p className="text-lg font-semibold">{formatCurrency(summary.total_billing)}</p>
-        </div>
+        <KpiTile label="TCV Real (Closed Won)" value={formatCurrency(summary.tcv_real ?? 0)} />
+        <KpiTile label="TCV Potencial" value={formatCurrency(summary.tcv_potencial ?? 0)} />
         {showMargin && (
-          <div className="rounded-md border bg-muted/30 px-4 py-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Margen de contribución</p>
-            <p className="text-lg font-semibold">{formatCurrency(summary.total_contribution_margin)}</p>
-          </div>
+          <>
+            <KpiTile label="Margen Real (Closed Won)" value={formatCurrency(summary.margin_real ?? 0)} />
+            <KpiTile label="Margen Potencial" value={formatCurrency(summary.margin_potencial ?? 0)} />
+          </>
         )}
       </div>
 
