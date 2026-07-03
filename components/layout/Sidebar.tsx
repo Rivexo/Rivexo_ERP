@@ -8,6 +8,7 @@ import {
   Contact,
   DollarSign,
   FileBarChart,
+  FilePlus,
   FolderKanban,
   HandCoins,
   Handshake,
@@ -90,6 +91,7 @@ export function Sidebar({ role }: { role: UserRole }) {
   const erpItems: NavItem[] = [
     { href: "/erp/costs", label: "Costos", icon: ReceiptText },
     { href: "/erp/revenues", label: "Ingresos", icon: DollarSign },
+    { href: "/erp/invoices", label: "Facturas", icon: FilePlus },
     { href: "/erp/support", label: "Soporte", icon: Repeat },
     { href: "/erp/freelancers", label: "Freelancers", icon: HandCoins },
     { href: "/erp/reports", label: "Reportes", icon: FileBarChart },
