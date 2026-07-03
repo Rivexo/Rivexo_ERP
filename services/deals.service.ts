@@ -130,65 +130,6 @@ export async function updateDealStage(
   if (error) throw error;
 }
 
-export async function updateDealWonPayment(
-  dealId: string,
-  payment: import("@/lib/validations/deal").WonPaymentInput,
-): Promise<void> {
-  const supabase = await createClient();
-
-  if (payment.modalidad === "contado") {
-    const { error } = await supabase
-      .from("deals")
-      .update({ payment_method: payment.payment_method, is_financed: false, is_msi: false })
-      .eq("id", dealId);
-    if (error) throw error;
-
-    const rows = payment.installments.map((inst) => ({
-      deal_id: dealId,
-      label: inst.label,
-      due_date: inst.due_date ?? null,
-      amount: inst.amount,
-      status: "pending" as const,
-    }));
-    const { error: instError } = await supabase.from("deal_payment_installments").insert(rows);
-    if (instError) throw instError;
-  } else {
-    const monthlyRate = payment.is_msi ? 0 : (payment.interest_rate ?? 0) / 100;
-    const n = payment.financing_term_months;
-    const P = payment.financed_total;
-
-    const monthlyPayment =
-      monthlyRate === 0
-        ? Math.round((P / n) * 100) / 100
-        : Math.round((P * monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1) * 100) / 100;
-
-    const { error } = await supabase
-      .from("deals")
-      .update({
-        is_financed: true,
-        financed_total: P,
-        financing_term_months: n,
-        interest_rate: monthlyRate,
-        is_msi: payment.is_msi,
-      })
-      .eq("id", dealId);
-    if (error) throw error;
-
-    const today = new Date();
-    const rows = Array.from({ length: n }, (_, i) => {
-      const dueDate = new Date(today.getFullYear(), today.getMonth() + i, today.getDate());
-      return {
-        deal_id: dealId,
-        label: payment.is_msi ? `MSI - Mes ${i + 1}` : `Financiamiento - Mes ${i + 1}`,
-        amount: monthlyPayment,
-        due_date: dueDate.toISOString().slice(0, 10),
-        status: "pending" as const,
-      };
-    });
-    const { error: instError } = await supabase.from("deal_payment_installments").insert(rows);
-    if (instError) throw instError;
-  }
-}
 
 export async function softDeleteDeal(id: string): Promise<void> {
   const supabase = await createClient();

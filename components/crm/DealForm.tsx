@@ -16,19 +16,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { dealSchema, type DealFormValues, type DealInput } from "@/lib/validations/deal";
+import { formatCurrency } from "@/lib/utils";
 import type { Profile } from "@/services/profiles.service";
 import type { BusinessLine } from "@/services/business-lines.service";
 import type { PipelineStage } from "@/services/pipeline-stages.service";
 import type { ContactWithAccount } from "@/services/contacts.service";
 import type { DealWithRelations } from "@/services/deals.service";
-
-const PAYMENT_METHOD_OPTIONS = [
-  { value: "transferencia", label: "Transferencia" },
-  { value: "tarjeta", label: "Tarjeta" },
-  { value: "efectivo", label: "Efectivo" },
-  { value: "cheque", label: "Cheque" },
-  { value: "otro", label: "Otro" },
-] as const;
 
 export function DealForm({
   deal,
@@ -75,19 +68,16 @@ export function DealForm({
       expected_close_date: deal?.expected_close_date ?? "",
       price: deal?.price ?? 0,
       iva_rate: deal?.iva_rate ?? 0.16,
-      payment_method: deal?.payment_method ?? null,
-      deposit_percentage: deal?.deposit_percentage ?? null,
-      monthly_support_amount: deal?.monthly_support_amount ?? null,
       observations: deal?.observations ?? "",
       estimated_direct_cost: initialEstimatedDirectCost ?? null,
-      is_financed: deal?.is_financed ?? false,
-      financed_total: deal?.financed_total ?? null,
-      financing_term_months: deal?.financing_term_months ?? null,
     },
   });
 
   const selectedAccountId = watch("account_id");
   const accountContacts = contacts.filter((c) => c.account_id === selectedAccountId);
+  const price = Number(watch("price")) || 0;
+  const ivaAmount = price * 0.16;
+  const totalWithIva = price * 1.16;
 
   async function submit(values: DealInput) {
     setServerError(null);
@@ -216,10 +206,22 @@ export function DealForm({
           <Input id="expected_close_date" type="date" {...register("expected_close_date")} />
         </div>
 
+        {/* Precio + desglose IVA */}
         <div className="space-y-2">
           <Label htmlFor="price">Precio del proyecto (sin IVA) *</Label>
           <Input id="price" type="number" step="0.01" min={0} {...register("price")} />
           {errors.price && <p className="text-sm text-destructive">{errors.price.message}</p>}
+        </div>
+
+        <div className="flex flex-col justify-end space-y-1 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+          <div className="flex justify-between text-muted-foreground">
+            <span>IVA (16%)</span>
+            <span className="font-medium tabular-nums text-foreground">{formatCurrency(ivaAmount)}</span>
+          </div>
+          <div className="flex justify-between font-semibold">
+            <span>Total con IVA</span>
+            <span className="tabular-nums">{formatCurrency(totalWithIva)}</span>
+          </div>
         </div>
 
         {canViewFinancials && (
@@ -228,70 +230,6 @@ export function DealForm({
             <Input id="estimated_direct_cost" type="number" step="0.01" min={0} {...register("estimated_direct_cost")} />
           </div>
         )}
-
-        <div className="space-y-2">
-          <Label>Forma de cobro</Label>
-          <Select
-            value={watch("is_financed") ? "financiado" : "contado"}
-            onValueChange={(value) => setValue("is_financed", value === "financiado")}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Forma de cobro">
-                {(value: string | null) => (value === "financiado" ? "Financiado" : "Contado")}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="contado">Contado</SelectItem>
-              <SelectItem value="financiado">Financiado</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {watch("is_financed") && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="financed_total">Total financiado (con intereses)</Label>
-              <Input id="financed_total" type="number" step="0.01" min={0} {...register("financed_total")} />
-              {errors.financed_total && <p className="text-sm text-destructive">{errors.financed_total.message}</p>}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="financing_term_months">Plazo (meses)</Label>
-              <Input id="financing_term_months" type="number" min={1} {...register("financing_term_months")} />
-            </div>
-          </>
-        )}
-
-        <div className="space-y-2">
-          <Label>Forma de pago</Label>
-          <Select
-            value={watch("payment_method") ?? undefined}
-            onValueChange={(value) => setValue("payment_method", value as DealInput["payment_method"])}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Selecciona una forma de pago">
-                {(value: string | null) => PAYMENT_METHOD_OPTIONS.find((opt) => opt.value === value)?.label}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {PAYMENT_METHOD_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="deposit_percentage">Anticipo (%)</Label>
-          <Input id="deposit_percentage" type="number" min={0} max={100} {...register("deposit_percentage")} />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="monthly_support_amount">Soporte mensual</Label>
-          <Input id="monthly_support_amount" type="number" step="0.01" min={0} {...register("monthly_support_amount")} />
-        </div>
       </div>
 
       <div className="space-y-2">
