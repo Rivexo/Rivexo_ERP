@@ -105,6 +105,21 @@ export async function updateProject(id: string, input: ProjectInput): Promise<vo
   }
 }
 
+export async function updateProjectPaymentConfig(
+  projectId: string,
+  config: {
+    payment_type?: string | null;
+    financing_term_months?: number | null;
+    interest_rate_annual?: number | null;
+    credit_start_date?: string | null;
+    down_payment?: number | null;
+  },
+): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("project_financials").update(config).eq("project_id", projectId);
+  if (error) throw error;
+}
+
 export async function listProjectMembers(projectId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase

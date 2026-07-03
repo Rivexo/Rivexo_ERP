@@ -15,6 +15,7 @@ import type { Installment } from "@/services/installments.service";
 const STATUS_OPTIONS = [
   { value: "pending", label: "Pendiente" },
   { value: "invoiced", label: "Facturada" },
+  { value: "partially_paid", label: "Parcialmente pagada" },
   { value: "paid", label: "Pagada" },
 ] as const;
 

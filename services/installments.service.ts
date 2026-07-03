@@ -72,6 +72,91 @@ export async function generateFinancingSchedule(dealId: string): Promise<void> {
   if (error) throw error;
 }
 
+export async function createInstallmentForProject(
+  projectId: string,
+  dealId: string,
+  input: InstallmentInput,
+): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("deal_payment_installments")
+    .insert({ deal_id: dealId, project_id: projectId, ...input });
+  if (error) throw error;
+}
+
+export async function deleteAllInstallmentsByDeal(dealId: string): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("deal_payment_installments").delete().eq("deal_id", dealId);
+  if (error) throw error;
+}
+
+function calcPmt(principal: number, monthlyRate: number, n: number): number {
+  if (monthlyRate === 0) return principal / n;
+  const factor = Math.pow(1 + monthlyRate, n);
+  return (principal * monthlyRate * factor) / (factor - 1);
+}
+
+export async function generateProjectFinancingSchedule(projectId: string, dealId: string): Promise<void> {
+  const supabase = await createClient();
+
+  const { data: fin, error: finError } = await supabase
+    .from("project_financials")
+    .select("budget_sold, financing_term_months, interest_rate_annual, credit_start_date, down_payment")
+    .eq("project_id", projectId)
+    .single();
+  if (finError) throw finError;
+  if (!fin.financing_term_months) throw new Error("El proyecto no tiene plazo configurado");
+
+  const { count, error: countError } = await supabase
+    .from("deal_payment_installments")
+    .select("id", { count: "exact", head: true })
+    .eq("deal_id", dealId);
+  if (countError) throw countError;
+  if (count && count > 0) throw new Error("Ya existe un calendario de pagos. Elimínalo antes de regenerar.");
+
+  const downPayment = fin.down_payment ?? 0;
+  const principal = fin.budget_sold - downPayment;
+  const r = (fin.interest_rate_annual ?? 0) / 12;
+  const n = fin.financing_term_months;
+  const pmt = Math.round(calcPmt(principal, r, n) * 100) / 100;
+
+  const startDate = fin.credit_start_date ? new Date(`${fin.credit_start_date}T00:00:00`) : new Date();
+  const rows: {
+    deal_id: string;
+    project_id: string;
+    label: string;
+    amount: number;
+    due_date: string;
+    status: "pending";
+  }[] = [];
+
+  if (downPayment > 0) {
+    rows.push({
+      deal_id: dealId,
+      project_id: projectId,
+      label: "Enganche",
+      amount: downPayment,
+      due_date: startDate.toISOString().slice(0, 10),
+      status: "pending",
+    });
+  }
+
+  for (let i = 0; i < n; i++) {
+    const d = new Date(startDate.getFullYear(), startDate.getMonth() + (downPayment > 0 ? i + 1 : i), startDate.getDate());
+    rows.push({
+      deal_id: dealId,
+      project_id: projectId,
+      label: `Mes ${i + 1} / ${n}`,
+      amount: pmt,
+      due_date: d.toISOString().slice(0, 10),
+      status: "pending",
+    });
+  }
+
+  const { error } = await supabase.from("deal_payment_installments").insert(rows);
+  if (error) throw error;
+}
+
 export type AccountsReceivableRow = {
   id: string;
   deal_id: string;

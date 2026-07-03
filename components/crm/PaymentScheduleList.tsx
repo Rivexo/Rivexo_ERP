@@ -11,10 +11,16 @@ import { formatCurrency } from "@/lib/utils";
 import type { InstallmentInput } from "@/lib/validations/installment";
 import type { Installment } from "@/services/installments.service";
 
-const STATUS_LABELS: Record<string, string> = { pending: "Pendiente", invoiced: "Facturada", paid: "Pagada" };
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pendiente",
+  invoiced: "Facturada",
+  partially_paid: "Parcialmente pagada",
+  paid: "Pagada",
+};
 const STATUS_VARIANT: Record<string, "outline" | "secondary" | "destructive"> = {
   pending: "outline",
   invoiced: "secondary",
+  partially_paid: "secondary",
   paid: "secondary",
 };
 

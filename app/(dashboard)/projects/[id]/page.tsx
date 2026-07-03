@@ -1,16 +1,15 @@
 import { notFound } from "next/navigation";
 import { ProjectForm } from "@/components/projects/ProjectForm";
 import { ProjectFinancialsPanel } from "@/components/projects/ProjectFinancialsPanel";
+import { PaymentPlanPanel } from "@/components/projects/PaymentPlanPanel";
 import { CommentsPanel } from "@/components/shared/CommentsPanel";
 import { LinksPanel } from "@/components/shared/LinksPanel";
 import { FreelancerInvoiceList } from "@/components/erp/FreelancerInvoiceList";
-import { PaymentScheduleList } from "@/components/crm/PaymentScheduleList";
 import {
   isAdminRole,
   canAccessErp,
   canManageCrm,
   canManageProjectFinancials,
-  canViewCrm,
   canViewProjectFinancials,
 } from "@/lib/permissions";
 import { getCurrentProfile, listProfiles } from "@/services/profiles.service";
@@ -28,11 +27,13 @@ import {
   toggleFreelancerInvoiceStatusAction,
 } from "../../erp/freelancers/actions";
 import {
-  createInstallmentAction,
-  deleteInstallmentAction,
-  generateFinancingScheduleAction,
-  updateInstallmentAction,
-} from "../../crm/deals/actions";
+  setPaymentTypeAction,
+  createProjectInstallmentAction,
+  updateProjectInstallmentAction,
+  deleteProjectInstallmentAction,
+  deleteAllInstallmentsAction,
+  generateProjectScheduleAction,
+} from "../payment-actions";
 
 export default async function ProjectOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -51,7 +52,6 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
   const showFinancials = profile ? canViewProjectFinancials(profile.role) : false;
   const manageFinancials = profile ? canManageProjectFinancials(profile.role) : false;
   const showFreelancerInvoices = profile ? canAccessErp(profile.role) : false;
-  const showPaymentSchedule = profile ? canViewCrm(profile.role) : false;
   const canManagePaymentSchedule = profile ? canManageCrm(profile.role) : false;
   const projectManagers = profiles.filter((p) => p.role === "project_manager" || isAdminRole(p.role));
 
@@ -59,7 +59,7 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
   const freelancerFiles = showFreelancerInvoices
     ? await listFilesByEntityIds("freelancer_invoice", freelancerInvoices.map((i) => i.id))
     : {};
-  const installments = showPaymentSchedule ? await listInstallmentsByDeal(project.deal_id) : [];
+  const installments = showFinancials ? await listInstallmentsByDeal(project.deal_id) : [];
 
   return (
     <div className="space-y-6">
@@ -88,19 +88,20 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
         <LinksPanel entityType="project" entityId={id} links={links} onCreate={createLinkAction} onDelete={deleteLinkAction} />
       </div>
 
-      {showPaymentSchedule && (
-        <div>
-          <h3 className="mb-2 text-sm font-medium">Plan de pagos</h3>
-          <PaymentScheduleList
-            installments={installments}
-            canEdit={canManagePaymentSchedule}
-            showGenerateSchedule={financials?.is_financed ?? false}
-            onCreate={createInstallmentAction.bind(null, project.deal_id)}
-            onUpdate={updateInstallmentAction.bind(null, project.deal_id)}
-            onDelete={deleteInstallmentAction.bind(null, project.deal_id)}
-            onGenerateSchedule={generateFinancingScheduleAction.bind(null, project.deal_id)}
-          />
-        </div>
+      {showFinancials && (
+        <PaymentPlanPanel
+          financials={financials}
+          installments={installments}
+          projectId={id}
+          dealId={project.deal_id}
+          canEdit={canManagePaymentSchedule}
+          onSetPaymentType={setPaymentTypeAction.bind(null, id)}
+          onCreate={createProjectInstallmentAction.bind(null, id, project.deal_id)}
+          onUpdate={updateProjectInstallmentAction.bind(null, id)}
+          onDelete={deleteProjectInstallmentAction.bind(null, id)}
+          onDeleteAll={deleteAllInstallmentsAction.bind(null, id, project.deal_id)}
+          onGenerateSchedule={generateProjectScheduleAction.bind(null, id, project.deal_id)}
+        />
       )}
 
       {showFreelancerInvoices && (
