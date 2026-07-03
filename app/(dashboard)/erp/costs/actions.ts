@@ -8,6 +8,7 @@ import {
   createVariableExpense,
   deleteVariableExpense,
   updateVariableExpense,
+  uploadExpenseConciliation,
 } from "@/services/variable-expenses.service";
 
 export async function createFixedCostAction(input: FixedCostInput): Promise<void> {
@@ -41,5 +42,16 @@ export async function updateVariableExpenseAction(id: string, input: VariableExp
 
 export async function deleteVariableExpenseAction(id: string): Promise<void> {
   await deleteVariableExpense(id);
+  revalidatePath("/erp/costs");
+}
+
+export async function uploadExpenseConciliationAction(id: string, formData: FormData): Promise<void> {
+  const pdf = formData.get("pdf");
+  const xml = formData.get("xml");
+  await uploadExpenseConciliation(
+    id,
+    pdf instanceof File ? pdf : null,
+    xml instanceof File ? xml : null,
+  );
   revalidatePath("/erp/costs");
 }

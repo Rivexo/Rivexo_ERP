@@ -6,6 +6,7 @@ import { CommentsPanel } from "@/components/shared/CommentsPanel";
 import { LinksPanel } from "@/components/shared/LinksPanel";
 import { FreelancerInvoiceList } from "@/components/erp/FreelancerInvoiceList";
 import { CustomerInvoiceList } from "@/components/erp/CustomerInvoiceList";
+import { CustomerPaymentList } from "@/components/erp/CustomerPaymentList";
 import {
   isAdminRole,
   canAccessErp,
@@ -20,6 +21,7 @@ import { listComments } from "@/services/comments.service";
 import { listLinks } from "@/services/links.service";
 import { listFreelancerInvoicesByProject } from "@/services/freelancer-invoices.service";
 import { listInvoicesByProject } from "@/services/customer-invoices.service";
+import { listPaymentsByProject, listPendingInvoicesForProject } from "@/services/customer-payments.service";
 import { listFilesByEntityIds } from "@/services/files.service";
 import { listInstallmentsByDeal } from "@/services/installments.service";
 import { createCommentAction, createLinkAction, deleteCommentAction, deleteLinkAction, updateProjectAction } from "../actions";
@@ -42,6 +44,12 @@ import {
   updateInvoiceStatusAction,
   uploadInvoiceFilesAction,
 } from "../invoice-actions";
+import {
+  createPaymentAction,
+  applyPaymentAction,
+  removeApplicationAction,
+  deletePaymentAction,
+} from "../payment-receipt-actions";
 
 export default async function ProjectOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -63,10 +71,12 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
   const canManagePaymentSchedule = profile ? canManageCrm(profile.role) : false;
   const projectManagers = profiles.filter((p) => p.role === "project_manager" || isAdminRole(p.role));
 
-  const [freelancerInvoices, customerInvoices, installments] = await Promise.all([
+  const [freelancerInvoices, customerInvoices, installments, customerPayments, pendingInvoices] = await Promise.all([
     showFreelancerInvoices ? listFreelancerInvoicesByProject(id) : Promise.resolve([]),
     showFinancials ? listInvoicesByProject(id) : Promise.resolve([]),
     showFinancials ? listInstallmentsByDeal(project.deal_id) : Promise.resolve([]),
+    showFinancials ? listPaymentsByProject(id) : Promise.resolve([]),
+    showFinancials ? listPendingInvoicesForProject(id) : Promise.resolve([]),
   ]);
   const freelancerFiles = showFreelancerInvoices
     ? await listFilesByEntityIds("freelancer_invoice", freelancerInvoices.map((i) => i.id))
@@ -125,6 +135,21 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
             onUpload={uploadInvoiceFilesAction.bind(null, id)}
             onStatusChange={updateInvoiceStatusAction.bind(null, id)}
             onDelete={deleteInvoiceAction.bind(null, id)}
+          />
+        </div>
+      )}
+
+      {showFinancials && (
+        <div>
+          <h3 className="mb-2 text-sm font-medium">Pagos recibidos</h3>
+          <CustomerPaymentList
+            payments={customerPayments}
+            pendingInvoices={pendingInvoices}
+            canEdit={manageFinancials}
+            onCreate={createPaymentAction.bind(null, id)}
+            onApply={applyPaymentAction.bind(null, id)}
+            onRemoveApplication={removeApplicationAction.bind(null, id)}
+            onDelete={deletePaymentAction.bind(null, id)}
           />
         </div>
       )}

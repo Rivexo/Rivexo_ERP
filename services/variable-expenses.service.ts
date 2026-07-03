@@ -43,3 +43,38 @@ export async function deleteVariableExpense(id: string): Promise<void> {
   const { error } = await supabase.from("variable_expenses").delete().eq("id", id);
   if (error) throw error;
 }
+
+export async function uploadExpenseConciliation(
+  expenseId: string,
+  pdfFile?: File | null,
+  xmlFile?: File | null,
+): Promise<void> {
+  const supabase = await createClient();
+  const updates: {
+    vendor_invoice_pdf_path?: string;
+    vendor_invoice_xml_path?: string;
+    vendor_invoice_ref?: string;
+    conciliation_status: "conciliado";
+  } = { conciliation_status: "conciliado" };
+
+  if (pdfFile && pdfFile.size > 0) {
+    const path = `expenses/${expenseId}/comprobante.pdf`;
+    const { error } = await supabase.storage
+      .from("cost-invoices")
+      .upload(path, pdfFile, { contentType: "application/pdf", upsert: true });
+    if (error) throw error;
+    updates.vendor_invoice_pdf_path = path;
+  }
+
+  if (xmlFile && xmlFile.size > 0) {
+    const path = `expenses/${expenseId}/comprobante.xml`;
+    const { error } = await supabase.storage
+      .from("cost-invoices")
+      .upload(path, xmlFile, { contentType: "text/xml", upsert: true });
+    if (error) throw error;
+    updates.vendor_invoice_xml_path = path;
+  }
+
+  const { error } = await supabase.from("variable_expenses").update(updates).eq("id", expenseId);
+  if (error) throw error;
+}

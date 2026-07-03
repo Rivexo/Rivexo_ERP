@@ -16,6 +16,7 @@ import {
   deleteVariableExpenseAction,
   updateFixedCostAction,
   updateVariableExpenseAction,
+  uploadExpenseConciliationAction,
 } from "./actions";
 
 export default async function ErpCostsPage() {
@@ -60,6 +61,7 @@ export default async function ErpCostsPage() {
             onCreate={createVariableExpenseAction}
             onUpdate={updateVariableExpenseAction}
             onDelete={deleteVariableExpenseAction}
+            onUploadConciliation={uploadExpenseConciliationAction}
           />
         </TabsContent>
       </Tabs>
