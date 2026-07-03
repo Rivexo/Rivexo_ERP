@@ -309,6 +309,149 @@ export type Database = {
           },
         ]
       }
+      customer_invoices: {
+        Row: {
+          account_id: string
+          created_at: string
+          created_by: string | null
+          due_at: string | null
+          folio: string | null
+          id: string
+          issued_at: string
+          iva_amount: number
+          iva_rate: number
+          notes: string | null
+          pdf_path: string | null
+          project_id: string
+          serie: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          total: number
+          updated_at: string
+          uuid_fiscal: string | null
+          xml_path: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          created_by?: string | null
+          due_at?: string | null
+          folio?: string | null
+          id?: string
+          issued_at?: string
+          iva_rate?: number
+          notes?: string | null
+          pdf_path?: string | null
+          project_id: string
+          serie?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          updated_at?: string
+          uuid_fiscal?: string | null
+          xml_path?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          created_by?: string | null
+          due_at?: string | null
+          folio?: string | null
+          id?: string
+          issued_at?: string
+          iva_rate?: number
+          notes?: string | null
+          pdf_path?: string | null
+          project_id?: string
+          serie?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          updated_at?: string
+          uuid_fiscal?: string | null
+          xml_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_invoices_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_invoices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_payments: {
+        Row: {
+          account_id: string
+          amount: number
+          bank_account: string | null
+          bank_reference: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          paid_at: string
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
+          project_id: string
+          receipt_path: string | null
+          reconciliation_status: Database["public"]["Enums"]["reconciliation_status"]
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          amount: number
+          bank_account?: string | null
+          bank_reference?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          project_id: string
+          receipt_path?: string | null
+          reconciliation_status?: Database["public"]["Enums"]["reconciliation_status"]
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          bank_account?: string | null
+          bank_reference?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          paid_at?: string
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
+          project_id?: string
+          receipt_path?: string | null
+          reconciliation_status?: Database["public"]["Enums"]["reconciliation_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_payments_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_payments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_financials: {
         Row: {
           created_at: string
@@ -352,8 +495,10 @@ export type Database = {
           deal_id: string
           due_date: string | null
           id: string
+          invoice_id: string | null
           label: string
           paid_at: string | null
+          project_id: string | null
           status: Database["public"]["Enums"]["installment_status"]
           updated_at: string
         }
@@ -363,8 +508,10 @@ export type Database = {
           deal_id: string
           due_date?: string | null
           id?: string
+          invoice_id?: string | null
           label: string
           paid_at?: string | null
+          project_id?: string | null
           status?: Database["public"]["Enums"]["installment_status"]
           updated_at?: string
         }
@@ -374,8 +521,10 @@ export type Database = {
           deal_id?: string
           due_date?: string | null
           id?: string
+          invoice_id?: string | null
           label?: string
           paid_at?: string | null
+          project_id?: string | null
           status?: Database["public"]["Enums"]["installment_status"]
           updated_at?: string
         }
@@ -604,6 +753,59 @@ export type Database = {
           },
         ]
       }
+      fixed_cost_periods: {
+        Row: {
+          amount: number
+          conciliation_status: Database["public"]["Enums"]["cost_conciliation_status"]
+          created_at: string
+          fixed_cost_id: string
+          id: string
+          journal_entry_id: string | null
+          notes: string | null
+          period: string
+          updated_at: string
+          vendor_invoice_pdf_path: string | null
+          vendor_invoice_ref: string | null
+          vendor_invoice_xml_path: string | null
+        }
+        Insert: {
+          amount: number
+          conciliation_status?: Database["public"]["Enums"]["cost_conciliation_status"]
+          created_at?: string
+          fixed_cost_id: string
+          id?: string
+          journal_entry_id?: string | null
+          notes?: string | null
+          period: string
+          updated_at?: string
+          vendor_invoice_pdf_path?: string | null
+          vendor_invoice_ref?: string | null
+          vendor_invoice_xml_path?: string | null
+        }
+        Update: {
+          amount?: number
+          conciliation_status?: Database["public"]["Enums"]["cost_conciliation_status"]
+          created_at?: string
+          fixed_cost_id?: string
+          id?: string
+          journal_entry_id?: string | null
+          notes?: string | null
+          period?: string
+          updated_at?: string
+          vendor_invoice_pdf_path?: string | null
+          vendor_invoice_ref?: string | null
+          vendor_invoice_xml_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixed_cost_periods_fixed_cost_id_fkey"
+            columns: ["fixed_cost_id"]
+            isOneToOne: false
+            referencedRelation: "fixed_costs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fixed_costs: {
         Row: {
           amount: number
@@ -700,6 +902,42 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_payments: {
+        Row: {
+          amount_applied: number
+          created_at: string
+          invoice_id: string
+          payment_id: string
+        }
+        Insert: {
+          amount_applied: number
+          created_at?: string
+          invoice_id: string
+          payment_id: string
+        }
+        Update: {
+          amount_applied?: number
+          created_at?: string
+          invoice_id?: string
+          payment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "customer_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_payments_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "customer_payments"
             referencedColumns: ["id"]
           },
         ]
@@ -1027,33 +1265,45 @@ export type Database = {
         Row: {
           budget_sold: number
           created_at: string
+          credit_start_date: string | null
           direct_cost: number
+          down_payment: number | null
           financed_total: number | null
           financing_term_months: number | null
+          interest_rate_annual: number | null
           is_financed: boolean
           iva_rate: number
+          payment_type: string | null
           project_id: string
           updated_at: string
         }
         Insert: {
           budget_sold?: number
           created_at?: string
+          credit_start_date?: string | null
           direct_cost?: number
+          down_payment?: number | null
           financed_total?: number | null
           financing_term_months?: number | null
+          interest_rate_annual?: number | null
           is_financed?: boolean
           iva_rate?: number
+          payment_type?: string | null
           project_id: string
           updated_at?: string
         }
         Update: {
           budget_sold?: number
           created_at?: string
+          credit_start_date?: string | null
           direct_cost?: number
+          down_payment?: number | null
           financed_total?: number | null
           financing_term_months?: number | null
+          interest_rate_annual?: number | null
           is_financed?: boolean
           iva_rate?: number
+          payment_type?: string | null
           project_id?: string
           updated_at?: string
         }
@@ -1588,29 +1838,41 @@ export type Database = {
         Row: {
           amount: number
           category_id: string | null
+          conciliation_status: Database["public"]["Enums"]["cost_conciliation_status"]
           created_at: string
           description: string
           expense_date: string
           id: string
           project_id: string | null
+          vendor_invoice_pdf_path: string | null
+          vendor_invoice_ref: string | null
+          vendor_invoice_xml_path: string | null
         }
         Insert: {
           amount: number
           category_id?: string | null
+          conciliation_status?: Database["public"]["Enums"]["cost_conciliation_status"]
           created_at?: string
           description: string
           expense_date?: string
           id?: string
           project_id?: string | null
+          vendor_invoice_pdf_path?: string | null
+          vendor_invoice_ref?: string | null
+          vendor_invoice_xml_path?: string | null
         }
         Update: {
           amount?: number
           category_id?: string | null
+          conciliation_status?: Database["public"]["Enums"]["cost_conciliation_status"]
           created_at?: string
           description?: string
           expense_date?: string
           id?: string
           project_id?: string | null
+          vendor_invoice_pdf_path?: string | null
+          vendor_invoice_ref?: string | null
+          vendor_invoice_xml_path?: string | null
         }
         Relationships: [
           {
@@ -1733,7 +1995,10 @@ export type Database = {
       decision_impact: "low" | "medium" | "high"
       expense_category_kind: "fixed" | "variable"
       freelancer_invoice_status: "pending" | "paid"
-      installment_status: "pending" | "invoiced" | "paid"
+      cost_conciliation_status: "sin_comprobante" | "con_comprobante" | "conciliado"
+      installment_status: "pending" | "invoiced" | "partially_paid" | "paid"
+      invoice_status: "borrador" | "emitida" | "parcialmente_pagada" | "pagada" | "cancelada" | "vencida"
+      reconciliation_status: "pendiente" | "conciliado" | "diferencia" | "rechazado"
       payment_method:
         | "transferencia"
         | "tarjeta"
