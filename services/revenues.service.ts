@@ -110,6 +110,83 @@ export async function getRevenueForecast(): Promise<ForecastSummary> {
   return { total_committed, due_this_month, overdue, rows: wonRows };
 }
 
+export type ExpenseForecastRow = {
+  id: string;
+  project_id: string | null;
+  project_name: string;
+  label: string;
+  amount: number;
+  due_date: string | null;
+  is_overdue: boolean;
+  source: "cost_installment" | "freelancer_invoice";
+};
+
+export async function getExpenseForecast(): Promise<ExpenseForecastRow[]> {
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [{ data: costRows, error: costError }, { data: freelancerRows, error: freelancerError }] =
+    await Promise.all([
+      supabase
+        .from("project_cost_installments")
+        .select("id, project_id, label, amount, due_date, project:projects(name)")
+        .eq("status", "pending")
+        .order("due_date", { ascending: true, nullsFirst: false }),
+      supabase
+        .from("freelancer_invoices")
+        .select("id, project_id, freelancer_name, amount, due_date, project:projects(name)")
+        .eq("status", "pending")
+        .order("due_date", { ascending: true, nullsFirst: false }),
+    ]);
+  if (costError) throw costError;
+  if (freelancerError) throw freelancerError;
+
+  type CostRaw = {
+    id: string;
+    project_id: string;
+    label: string;
+    amount: number;
+    due_date: string | null;
+    project: { name: string } | null;
+  };
+  type FreelancerRaw = {
+    id: string;
+    project_id: string;
+    freelancer_name: string;
+    amount: number;
+    due_date: string | null;
+    project: { name: string } | null;
+  };
+
+  const costResults: ExpenseForecastRow[] = (costRows as unknown as CostRaw[]).map((r) => ({
+    id: r.id,
+    project_id: r.project_id,
+    project_name: r.project?.name ?? "—",
+    label: r.label,
+    amount: r.amount,
+    due_date: r.due_date,
+    is_overdue: !!r.due_date && r.due_date < today,
+    source: "cost_installment",
+  }));
+
+  const freelancerResults: ExpenseForecastRow[] = (freelancerRows as unknown as FreelancerRaw[]).map((r) => ({
+    id: r.id,
+    project_id: r.project_id,
+    project_name: r.project?.name ?? "—",
+    label: `Factura freelancer — ${r.freelancer_name}`,
+    amount: r.amount,
+    due_date: r.due_date,
+    is_overdue: !!r.due_date && r.due_date < today,
+    source: "freelancer_invoice",
+  }));
+
+  return [...costResults, ...freelancerResults].sort((a, b) => {
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    return a.due_date.localeCompare(b.due_date);
+  });
+}
+
 export async function createRevenue(input: RevenueInput): Promise<void> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("revenues").insert(input).select("id").single();

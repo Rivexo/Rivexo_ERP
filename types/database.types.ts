@@ -394,6 +394,8 @@ export type Database = {
           bank_reference: string | null
           created_at: string
           created_by: string | null
+          complement_pdf_path: string | null
+          complement_xml_path: string | null
           id: string
           notes: string | null
           paid_at: string
@@ -408,6 +410,8 @@ export type Database = {
           amount: number
           bank_account?: string | null
           bank_reference?: string | null
+          complement_pdf_path?: string | null
+          complement_xml_path?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -424,6 +428,8 @@ export type Database = {
           amount?: number
           bank_account?: string | null
           bank_reference?: string | null
+          complement_pdf_path?: string | null
+          complement_xml_path?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1271,6 +1277,7 @@ export type Database = {
           financed_total: number | null
           financing_term_months: number | null
           interest_rate_annual: number | null
+          cost_payment_type: string | null
           is_financed: boolean
           iva_rate: number
           payment_type: string | null
@@ -1279,6 +1286,7 @@ export type Database = {
         }
         Insert: {
           budget_sold?: number
+          cost_payment_type?: string | null
           created_at?: string
           credit_start_date?: string | null
           direct_cost?: number
@@ -1294,6 +1302,7 @@ export type Database = {
         }
         Update: {
           budget_sold?: number
+          cost_payment_type?: string | null
           created_at?: string
           credit_start_date?: string | null
           direct_cost?: number
@@ -1312,6 +1321,83 @@ export type Database = {
             foreignKeyName: "project_financials_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_cost_installments: {
+        Row: {
+          amount: number
+          collection_installment_id: string | null
+          created_at: string
+          deal_id: string
+          due_date: string | null
+          freelancer_invoice_id: string | null
+          id: string
+          label: string
+          notes: string | null
+          paid_at: string | null
+          project_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          collection_installment_id?: string | null
+          created_at?: string
+          deal_id: string
+          due_date?: string | null
+          freelancer_invoice_id?: string | null
+          id?: string
+          label: string
+          notes?: string | null
+          paid_at?: string | null
+          project_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          collection_installment_id?: string | null
+          created_at?: string
+          deal_id?: string
+          due_date?: string | null
+          freelancer_invoice_id?: string | null
+          id?: string
+          label?: string
+          notes?: string | null
+          paid_at?: string | null
+          project_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_cost_installments_collection_installment_id_fkey"
+            columns: ["collection_installment_id"]
+            isOneToOne: false
+            referencedRelation: "deal_payment_installments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_cost_installments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_cost_installments_freelancer_invoice_id_fkey"
+            columns: ["freelancer_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "freelancer_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_cost_installments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -1887,6 +1973,64 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      time_allocations: {
+        Row: {
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          hours_per_month: number
+          id: string
+          notes: string | null
+          profile_id: string
+          project_id: string | null
+          subscription_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          effective_from: string
+          effective_to?: string | null
+          hours_per_month: number
+          id?: string
+          notes?: string | null
+          profile_id: string
+          project_id?: string | null
+          subscription_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          hours_per_month?: number
+          id?: string
+          notes?: string | null
+          profile_id?: string
+          project_id?: string | null
+          subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_allocations_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_allocations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_allocations_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "monthly_support_subscriptions"
             referencedColumns: ["id"]
           },
         ]

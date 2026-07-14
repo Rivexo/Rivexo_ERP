@@ -4,18 +4,26 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarClock, ListChecks, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { CalendarClock, Link, Link2Off, ListChecks, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PaymentScheduleDialog } from "@/components/crm/PaymentScheduleDialog";
 import { cn, formatCurrency } from "@/lib/utils";
 import { financingConfigSchema, type FinancingConfigFormValues, type FinancingConfigInput } from "@/lib/validations/project-payment";
 import type { InstallmentInput } from "@/lib/validations/installment";
 import type { Installment } from "@/services/installments.service";
+import type { CustomerInvoiceWithRelations } from "@/services/customer-invoices.service";
 import type { ProjectFinancials } from "@/services/projects.service";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -153,16 +161,21 @@ function FinancingForm({
 function InstallmentTable({
   installments,
   canEdit,
+  customerInvoices,
   onUpdate,
   onDelete,
+  onLinkInvoice,
 }: {
   installments: Installment[];
   canEdit: boolean;
+  customerInvoices: CustomerInvoiceWithRelations[];
   onUpdate: (id: string, input: InstallmentInput) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onLinkInvoice?: (installmentId: string, invoiceId: string | null) => Promise<void>;
 }) {
   const router = useRouter();
   const today = new Date().toISOString().slice(0, 10);
+  const [linkingId, setLinkingId] = useState<string | null>(null);
 
   const total = installments.reduce((s, i) => s + i.amount, 0);
   const paid = installments.filter((i) => i.status === "paid").reduce((s, i) => s + i.amount, 0);
@@ -170,6 +183,17 @@ function InstallmentTable({
   async function handleDelete(id: string) {
     await onDelete(id);
     router.refresh();
+  }
+
+  async function handleLink(installmentId: string, invoiceId: string | null) {
+    if (!onLinkInvoice) return;
+    setLinkingId(installmentId);
+    try {
+      await onLinkInvoice(installmentId, invoiceId);
+      router.refresh();
+    } finally {
+      setLinkingId(null);
+    }
   }
 
   return (
@@ -189,12 +213,17 @@ function InstallmentTable({
             <TableHead>Monto</TableHead>
             <TableHead>Vencimiento</TableHead>
             <TableHead>Estatus</TableHead>
+            <TableHead>Factura CFDI</TableHead>
             {canEdit && <TableHead />}
           </TableRow>
         </TableHeader>
         <TableBody>
           {installments.map((inst) => {
             const isOverdue = inst.status !== "paid" && !!inst.due_date && inst.due_date < today;
+            const linkedInvoice = inst.invoice_id
+              ? customerInvoices.find((inv) => inv.id === inst.invoice_id)
+              : null;
+            const isLinking = linkingId === inst.id;
             return (
               <TableRow key={inst.id}>
                 <TableCell className="font-medium">{inst.label}</TableCell>
@@ -211,6 +240,49 @@ function InstallmentTable({
                     </Badge>
                     {isOverdue && <Badge variant="destructive">Vencida</Badge>}
                   </div>
+                </TableCell>
+                <TableCell>
+                  {linkedInvoice ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs rounded-full bg-muted px-2 py-0.5">
+                        {[linkedInvoice.serie, linkedInvoice.folio].filter(Boolean).join("-") || "(sin folio)"}
+                      </span>
+                      {canEdit && onLinkInvoice && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5"
+                          disabled={isLinking}
+                          title="Desvincular factura"
+                          onClick={() => handleLink(inst.id, null)}
+                        >
+                          <Link2Off className="size-3" />
+                        </Button>
+                      )}
+                    </div>
+                  ) : canEdit && onLinkInvoice && customerInvoices.length > 0 ? (
+                    <Select
+                      value=""
+                      onValueChange={(v) => { if (v) handleLink(inst.id, v); }}
+                      disabled={isLinking}
+                    >
+                      <SelectTrigger className="h-7 w-36 text-xs">
+                        <div className="flex items-center gap-1">
+                          <Link className="size-3" />
+                          <SelectValue placeholder="Vincular…" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customerInvoices.map((inv) => (
+                          <SelectItem key={inv.id} value={inv.id}>
+                            {[inv.serie, inv.folio].filter(Boolean).join("-") || "(sin folio)"} — {formatCurrency(inv.total)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 {canEdit && (
                   <TableCell>
@@ -247,6 +319,7 @@ function InstallmentTable({
 export function PaymentPlanPanel({
   financials,
   installments,
+  customerInvoices,
   projectId,
   dealId,
   canEdit,
@@ -256,9 +329,11 @@ export function PaymentPlanPanel({
   onDelete,
   onDeleteAll,
   onGenerateSchedule,
+  onLinkInvoice,
 }: {
   financials: ProjectFinancials | null;
   installments: Installment[];
+  customerInvoices: CustomerInvoiceWithRelations[];
   projectId: string;
   dealId: string;
   canEdit: boolean;
@@ -268,6 +343,7 @@ export function PaymentPlanPanel({
   onDelete: (id: string) => Promise<void>;
   onDeleteAll: () => Promise<void>;
   onGenerateSchedule: (config: FinancingConfigInput) => Promise<void>;
+  onLinkInvoice?: (installmentId: string, invoiceId: string | null) => Promise<void>;
 }) {
   const router = useRouter();
   const [deletingAll, setDeletingAll] = useState(false);
@@ -361,8 +437,10 @@ export function PaymentPlanPanel({
               <InstallmentTable
                 installments={installments}
                 canEdit={canEdit}
+                customerInvoices={customerInvoices}
                 onUpdate={onUpdate}
                 onDelete={onDelete}
+                onLinkInvoice={onLinkInvoice}
               />
             )}
           </div>
@@ -411,8 +489,10 @@ export function PaymentPlanPanel({
                 <InstallmentTable
                   installments={installments}
                   canEdit={canEdit}
+                  customerInvoices={customerInvoices}
                   onUpdate={onUpdate}
                   onDelete={onDelete}
+                  onLinkInvoice={onLinkInvoice}
                 />
               </div>
             )}

@@ -7,6 +7,7 @@ import { LinksPanel } from "@/components/shared/LinksPanel";
 import { FreelancerInvoiceList } from "@/components/erp/FreelancerInvoiceList";
 import { CustomerInvoiceList } from "@/components/erp/CustomerInvoiceList";
 import { CustomerPaymentList } from "@/components/erp/CustomerPaymentList";
+import { CostSchedulePanel } from "@/components/projects/CostSchedulePanel";
 import {
   isAdminRole,
   canAccessErp,
@@ -49,7 +50,19 @@ import {
   applyPaymentAction,
   removeApplicationAction,
   deletePaymentAction,
+  uploadPaymentComplementAction,
 } from "../payment-receipt-actions";
+import {
+  setCostPaymentTypeAction,
+  createCostInstallmentAction,
+  updateCostInstallmentAction,
+  deleteCostInstallmentAction,
+  generateCostScheduleAction,
+  deleteAllCostInstallmentsAction,
+  linkFreelancerInvoiceAction,
+} from "../cost-schedule-actions";
+import { listCostInstallmentsByProject } from "@/services/project-cost-schedule.service";
+import { linkInstallmentToInvoiceAction } from "../payment-actions";
 
 export default async function ProjectOverviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -71,13 +84,15 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
   const canManagePaymentSchedule = profile ? canManageCrm(profile.role) : false;
   const projectManagers = profiles.filter((p) => p.role === "project_manager" || isAdminRole(p.role));
 
-  const [freelancerInvoices, customerInvoices, installments, customerPayments, pendingInvoices] = await Promise.all([
-    showFreelancerInvoices ? listFreelancerInvoicesByProject(id) : Promise.resolve([]),
-    showFinancials ? listInvoicesByProject(id) : Promise.resolve([]),
-    showFinancials ? listInstallmentsByDeal(project.deal_id) : Promise.resolve([]),
-    showFinancials ? listPaymentsByProject(id) : Promise.resolve([]),
-    showFinancials ? listPendingInvoicesForProject(id) : Promise.resolve([]),
-  ]);
+  const [freelancerInvoices, customerInvoices, installments, customerPayments, pendingInvoices, costInstallments] =
+    await Promise.all([
+      showFreelancerInvoices ? listFreelancerInvoicesByProject(id) : Promise.resolve([]),
+      showFinancials ? listInvoicesByProject(id) : Promise.resolve([]),
+      showFinancials ? listInstallmentsByDeal(project.deal_id) : Promise.resolve([]),
+      showFinancials ? listPaymentsByProject(id) : Promise.resolve([]),
+      showFinancials ? listPendingInvoicesForProject(id) : Promise.resolve([]),
+      showFinancials ? listCostInstallmentsByProject(id) : Promise.resolve([]),
+    ]);
   const freelancerFiles = showFreelancerInvoices
     ? await listFilesByEntityIds("freelancer_invoice", freelancerInvoices.map((i) => i.id))
     : {};
@@ -113,6 +128,7 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
         <PaymentPlanPanel
           financials={financials}
           installments={installments}
+          customerInvoices={customerInvoices}
           projectId={id}
           dealId={project.deal_id}
           canEdit={canManagePaymentSchedule}
@@ -122,6 +138,23 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
           onDelete={deleteProjectInstallmentAction.bind(null, id)}
           onDeleteAll={deleteAllInstallmentsAction.bind(null, id, project.deal_id)}
           onGenerateSchedule={generateProjectScheduleAction.bind(null, id, project.deal_id)}
+          onLinkInvoice={linkInstallmentToInvoiceAction.bind(null, id)}
+        />
+      )}
+
+      {showFinancials && (
+        <CostSchedulePanel
+          financials={financials}
+          costInstallments={costInstallments}
+          freelancerInvoices={freelancerInvoices}
+          canEdit={manageFinancials}
+          onSetCostPaymentType={setCostPaymentTypeAction.bind(null, id)}
+          onCreate={createCostInstallmentAction.bind(null, id, project.deal_id)}
+          onUpdate={updateCostInstallmentAction.bind(null, id)}
+          onDelete={deleteCostInstallmentAction.bind(null, id)}
+          onDeleteAll={deleteAllCostInstallmentsAction.bind(null, id)}
+          onGenerateSchedule={generateCostScheduleAction.bind(null, id, project.deal_id)}
+          onLinkFreelancerInvoice={linkFreelancerInvoiceAction.bind(null, id)}
         />
       )}
 
@@ -145,11 +178,13 @@ export default async function ProjectOverviewPage({ params }: { params: Promise<
           <CustomerPaymentList
             payments={customerPayments}
             pendingInvoices={pendingInvoices}
+            projectId={id}
             canEdit={manageFinancials}
             onCreate={createPaymentAction.bind(null, id)}
             onApply={applyPaymentAction.bind(null, id)}
             onRemoveApplication={removeApplicationAction.bind(null, id)}
             onDelete={deletePaymentAction.bind(null, id)}
+            onUploadComplement={uploadPaymentComplementAction}
           />
         </div>
       )}

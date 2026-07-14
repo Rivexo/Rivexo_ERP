@@ -1,11 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Download, Link2Off, Plus, Trash2 } from "lucide-react";
+import { Download, FileText, Link2Off, Plus, Trash2, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { CustomerPaymentDialog, ReconcilePaymentDialog } from "@/components/erp/CustomerPaymentDialog";
+import { CustomerPaymentDialog, ReconcilePaymentDialog, UploadPaymentComplementDialog } from "@/components/erp/CustomerPaymentDialog";
 import { formatCurrency } from "@/lib/utils";
 import type { CustomerPaymentWithReconciliation, PendingInvoiceOption } from "@/services/customer-payments.service";
 
@@ -20,19 +20,23 @@ const METHOD_LABEL: Record<string, string> = {
 export function CustomerPaymentList({
   payments,
   pendingInvoices,
+  projectId,
   canEdit,
   onCreate,
   onApply,
   onRemoveApplication,
   onDelete,
+  onUploadComplement,
 }: {
   payments: CustomerPaymentWithReconciliation[];
   pendingInvoices: PendingInvoiceOption[];
+  projectId?: string;
   canEdit: boolean;
   onCreate: (formData: FormData) => Promise<void>;
   onApply: (paymentId: string, invoiceId: string, amountApplied: number) => Promise<void>;
   onRemoveApplication: (paymentId: string, invoiceId: string) => Promise<void>;
   onDelete: (paymentId: string) => Promise<void>;
+  onUploadComplement?: (projectId: string, paymentId: string, formData: FormData) => Promise<void>;
 }) {
   const router = useRouter();
 
@@ -129,13 +133,39 @@ export function CustomerPaymentList({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap">
                       {pmt.receipt_url && (
-                        <a href={pmt.receipt_url} target="_blank" rel="noreferrer" title="Ver comprobante">
+                        <a href={pmt.receipt_url} target="_blank" rel="noreferrer" title="Comprobante de pago">
                           <Button variant="ghost" size="icon" className="h-7 w-7">
                             <Download className="size-3.5" />
                           </Button>
                         </a>
+                      )}
+                      {pmt.complement_pdf_url && (
+                        <a href={pmt.complement_pdf_url} target="_blank" rel="noreferrer" title="Complemento de pago PDF">
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <FileText className="size-3.5" />
+                          </Button>
+                        </a>
+                      )}
+                      {pmt.complement_xml_url && (
+                        <a href={pmt.complement_xml_url} target="_blank" rel="noreferrer" title="Complemento de pago XML">
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <FileText className="size-3.5 text-muted-foreground" />
+                          </Button>
+                        </a>
+                      )}
+                      {canEdit && onUploadComplement && projectId && !pmt.complement_pdf_url && !pmt.complement_xml_url && (
+                        <UploadPaymentComplementDialog
+                          paymentId={pmt.id}
+                          projectId={projectId}
+                          onUpload={onUploadComplement}
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Subir complemento de pago">
+                              <Upload className="size-3.5" />
+                            </Button>
+                          }
+                        />
                       )}
                       {canEdit && pmt.remaining > 0 && pendingInvoices.length > 0 && (
                         <ReconcilePaymentDialog

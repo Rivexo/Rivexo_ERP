@@ -9,6 +9,7 @@ import {
   deleteInstallment,
   deleteAllInstallmentsByDeal,
   generateProjectFinancingSchedule,
+  linkInvoiceToInstallment,
 } from "@/services/installments.service";
 import { updateProjectPaymentConfig } from "@/services/projects.service";
 
@@ -69,5 +70,14 @@ export async function generateProjectScheduleAction(
 
 export async function deleteAllInstallmentsAction(projectId: string, dealId: string): Promise<void> {
   await deleteAllInstallmentsByDeal(dealId);
+  revalidate(projectId);
+}
+
+export async function linkInstallmentToInvoiceAction(
+  projectId: string,
+  installmentId: string,
+  invoiceId: string | null,
+): Promise<void> {
+  await linkInvoiceToInstallment(installmentId, invoiceId);
   revalidate(projectId);
 }

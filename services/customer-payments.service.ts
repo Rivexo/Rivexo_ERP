@@ -14,6 +14,8 @@ export type AppliedInvoice = {
 
 export type CustomerPaymentWithReconciliation = CustomerPayment & {
   receipt_url: string | null;
+  complement_pdf_url: string | null;
+  complement_xml_url: string | null;
   total_applied: number;
   remaining: number;
   applied_invoices: AppliedInvoice[];
@@ -56,9 +58,21 @@ export async function listPaymentsByProject(projectId: string): Promise<Customer
 
   return Promise.all(
     (data as unknown as RawPayment[]).map(async (row) => {
-      const receiptUrl = row.receipt_path
-        ? (await supabase.storage.from(BUCKET).createSignedUrl(row.receipt_path, SIGNED_URL_TTL)).data?.signedUrl ?? null
-        : null;
+      const [receiptSigned, complementPdfSigned, complementXmlSigned] = await Promise.all([
+        row.receipt_path
+          ? supabase.storage.from(BUCKET).createSignedUrl(row.receipt_path, SIGNED_URL_TTL)
+          : Promise.resolve({ data: null }),
+        row.complement_pdf_path
+          ? supabase.storage.from(BUCKET).createSignedUrl(row.complement_pdf_path, SIGNED_URL_TTL)
+          : Promise.resolve({ data: null }),
+        row.complement_xml_path
+          ? supabase.storage.from(BUCKET).createSignedUrl(row.complement_xml_path, SIGNED_URL_TTL)
+          : Promise.resolve({ data: null }),
+      ]);
+
+      const receiptUrl = receiptSigned.data?.signedUrl ?? null;
+      const complementPdfUrl = complementPdfSigned.data?.signedUrl ?? null;
+      const complementXmlUrl = complementXmlSigned.data?.signedUrl ?? null;
 
       const appliedInvoices: AppliedInvoice[] = row.invoice_payments
         .filter((ip) => ip.invoice)
@@ -74,6 +88,8 @@ export async function listPaymentsByProject(projectId: string): Promise<Customer
       return {
         ...row,
         receipt_url: receiptUrl,
+        complement_pdf_url: complementPdfUrl,
+        complement_xml_url: complementXmlUrl,
         total_applied: totalApplied,
         remaining: row.amount - totalApplied,
         applied_invoices: appliedInvoices,
@@ -123,6 +139,8 @@ export async function createCustomerPayment(
   createdBy: string,
   input: CustomerPaymentInput,
   receiptFile?: File | null,
+  complementPdfFile?: File | null,
+  complementXmlFile?: File | null,
 ): Promise<string> {
   const supabase = await createClient();
 
@@ -143,17 +161,70 @@ export async function createCustomerPayment(
     .single();
   if (error) throw error;
 
+  const updates: { receipt_path?: string; complement_pdf_path?: string; complement_xml_path?: string } = {};
+
   if (receiptFile && receiptFile.size > 0) {
     const path = `${projectId}/${data.id}/comprobante.${receiptFile.name.split(".").pop()}`;
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)
       .upload(path, receiptFile, { contentType: receiptFile.type, upsert: true });
-    if (!uploadError) {
-      await supabase.from("customer_payments").update({ receipt_path: path }).eq("id", data.id);
-    }
+    if (!uploadError) updates.receipt_path = path;
+  }
+
+  if (complementPdfFile && complementPdfFile.size > 0) {
+    const path = `${projectId}/${data.id}/complemento.pdf`;
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, complementPdfFile, { contentType: "application/pdf", upsert: true });
+    if (!uploadError) updates.complement_pdf_path = path;
+  }
+
+  if (complementXmlFile && complementXmlFile.size > 0) {
+    const path = `${projectId}/${data.id}/complemento.xml`;
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, complementXmlFile, { contentType: "text/xml", upsert: true });
+    if (!uploadError) updates.complement_xml_path = path;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await supabase.from("customer_payments").update(updates).eq("id", data.id);
   }
 
   return data.id;
+}
+
+export async function uploadPaymentComplement(
+  paymentId: string,
+  projectId: string,
+  pdfFile?: File | null,
+  xmlFile?: File | null,
+): Promise<void> {
+  const supabase = await createClient();
+  const updates: { complement_pdf_path?: string; complement_xml_path?: string } = {};
+
+  if (pdfFile && pdfFile.size > 0) {
+    const path = `${projectId}/${paymentId}/complemento.pdf`;
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, pdfFile, { contentType: "application/pdf", upsert: true });
+    if (error) throw error;
+    updates.complement_pdf_path = path;
+  }
+
+  if (xmlFile && xmlFile.size > 0) {
+    const path = `${projectId}/${paymentId}/complemento.xml`;
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, xmlFile, { contentType: "text/xml", upsert: true });
+    if (error) throw error;
+    updates.complement_xml_path = path;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    const { error } = await supabase.from("customer_payments").update(updates).eq("id", paymentId);
+    if (error) throw error;
+  }
 }
 
 export async function applyPaymentToInvoice(

@@ -124,8 +124,22 @@ export function CustomerPaymentDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="receipt">Comprobante (archivo)</Label>
+            <Label htmlFor="receipt">Comprobante de pago</Label>
             <Input id="receipt" name="receipt" type="file" accept="application/pdf,image/*" />
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Complemento de pago CFDI</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="complement_pdf" className="text-xs text-muted-foreground">PDF</Label>
+                <Input id="complement_pdf" name="complement_pdf" type="file" accept="application/pdf" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="complement_xml" className="text-xs text-muted-foreground">XML</Label>
+                <Input id="complement_xml" name="complement_xml" type="file" accept=".xml,text/xml,application/xml" />
+              </div>
+            </div>
           </div>
 
           {pendingInvoices.length > 0 && (
@@ -176,6 +190,68 @@ export function CustomerPaymentDialog({
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Guardando..." : "Registrar pago"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function UploadPaymentComplementDialog({
+  paymentId,
+  projectId,
+  trigger,
+  onUpload,
+}: {
+  paymentId: string;
+  projectId: string;
+  trigger: React.ReactNode;
+  onUpload: (projectId: string, paymentId: string, formData: FormData) => Promise<void>;
+}) {
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const formData = new FormData(formRef.current!);
+    setIsSubmitting(true);
+    try {
+      await onUpload(projectId, paymentId, formData);
+      formRef.current?.reset();
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ocurrió un error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={trigger as React.ReactElement} />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Subir complemento de pago CFDI</DialogTitle>
+        </DialogHeader>
+        <form ref={formRef} onSubmit={submit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="comp-pdf">PDF</Label>
+            <Input id="comp-pdf" name="complement_pdf" type="file" accept="application/pdf" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="comp-xml">XML</Label>
+            <Input id="comp-xml" name="complement_xml" type="file" accept=".xml,text/xml,application/xml" />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Subiendo..." : "Subir"}
             </Button>
           </DialogFooter>
         </form>

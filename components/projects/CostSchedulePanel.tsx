@@ -1,0 +1,454 @@
+"use client";
+
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { HandCoins, Link, Link2Off, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn, formatCurrency } from "@/lib/utils";
+import type { CostInstallmentInput } from "@/lib/validations/cost-installment";
+import type { ProjectCostInstallmentWithRelations } from "@/services/project-cost-schedule.service";
+import type { ProjectFinancials } from "@/services/projects.service";
+import type { FreelancerInvoiceWithRelations } from "@/services/freelancer-invoices.service";
+
+const STATUS_LABELS: Record<string, string> = { pending: "Pendiente", paid: "Pagada" };
+const STATUS_VARIANT: Record<string, "outline" | "secondary"> = { pending: "outline", paid: "secondary" };
+
+function CostInstallmentDialog({
+  installment,
+  trigger,
+  onSubmit,
+}: {
+  installment?: ProjectCostInstallmentWithRelations;
+  trigger: React.ReactNode;
+  onSubmit: (input: CostInstallmentInput) => Promise<void>;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const fd = new FormData(formRef.current!);
+    setIsSubmitting(true);
+    try {
+      await onSubmit({
+        label: String(fd.get("label") || ""),
+        amount: Number(fd.get("amount")),
+        due_date: (fd.get("due_date") as string) || null,
+        notes: (fd.get("notes") as string) || null,
+      });
+      formRef.current?.reset();
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ocurrió un error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={trigger as React.ReactElement} />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{installment ? "Editar cuota de costo" : "Nueva cuota de costo"}</DialogTitle>
+        </DialogHeader>
+        <form ref={formRef} onSubmit={submit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="ci-label">Etiqueta *</Label>
+            <Input id="ci-label" name="label" defaultValue={installment?.label} required />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="ci-amount">Monto *</Label>
+              <Input id="ci-amount" name="amount" type="number" step="0.01" min={0} defaultValue={installment?.amount} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ci-due">Vencimiento</Label>
+              <Input id="ci-due" name="due_date" type="date" defaultValue={installment?.due_date ?? ""} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ci-notes">Notas</Label>
+            <Input id="ci-notes" name="notes" defaultValue={installment?.notes ?? ""} />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : installment ? "Guardar" : "Crear"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CostInstallmentTable({
+  installments,
+  canEdit,
+  freelancerInvoices,
+  onUpdate,
+  onDelete,
+  onLinkFreelancerInvoice,
+}: {
+  installments: ProjectCostInstallmentWithRelations[];
+  canEdit: boolean;
+  freelancerInvoices: FreelancerInvoiceWithRelations[];
+  onUpdate: (id: string, input: CostInstallmentInput) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  onLinkFreelancerInvoice?: (installmentId: string, invoiceId: string | null) => Promise<void>;
+}) {
+  const router = useRouter();
+  const today = new Date().toISOString().slice(0, 10);
+  const [linkingId, setLinkingId] = useState<string | null>(null);
+
+  const total = installments.reduce((s, i) => s + i.amount, 0);
+  const paid = installments.filter((i) => i.status === "paid").reduce((s, i) => s + i.amount, 0);
+
+  async function handleDelete(id: string) {
+    await onDelete(id);
+    router.refresh();
+  }
+
+  async function handleLink(installmentId: string, invoiceId: string | null) {
+    if (!onLinkFreelancerInvoice) return;
+    setLinkingId(installmentId);
+    try {
+      await onLinkFreelancerInvoice(installmentId, invoiceId);
+      router.refresh();
+    } finally {
+      setLinkingId(null);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-4 text-sm">
+        <span className="text-muted-foreground">
+          Total: <strong className="text-foreground tabular-nums">{formatCurrency(total)}</strong>
+        </span>
+        <span className="text-muted-foreground">
+          Pagado: <strong className="text-foreground tabular-nums">{formatCurrency(paid)}</strong>
+        </span>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Etiqueta</TableHead>
+            <TableHead>Monto</TableHead>
+            <TableHead>Vencimiento</TableHead>
+            <TableHead>Estatus</TableHead>
+            <TableHead>Factura freelancer</TableHead>
+            {canEdit && <TableHead />}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {installments.map((inst) => {
+            const isOverdue = inst.status !== "paid" && !!inst.due_date && inst.due_date < today;
+            const isLinking = linkingId === inst.id;
+            return (
+              <TableRow key={inst.id}>
+                <TableCell className="font-medium">
+                  {inst.label}
+                  {inst.collection_installment && (
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      (← {inst.collection_installment.label})
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="tabular-nums">{formatCurrency(inst.amount)}</TableCell>
+                <TableCell>
+                  {inst.due_date
+                    ? new Date(`${inst.due_date}T00:00:00`).toLocaleDateString("es-MX")
+                    : "—"}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    <Badge variant={STATUS_VARIANT[inst.status] ?? "outline"}>
+                      {STATUS_LABELS[inst.status] ?? inst.status}
+                    </Badge>
+                    {isOverdue && <Badge variant="destructive">Vencida</Badge>}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {inst.freelancer_invoice ? (
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs rounded-full bg-muted px-2 py-0.5">
+                        {inst.freelancer_invoice.freelancer_name} — {formatCurrency(inst.freelancer_invoice.amount)}
+                      </span>
+                      {canEdit && onLinkFreelancerInvoice && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5"
+                          disabled={isLinking}
+                          title="Desvincular factura"
+                          onClick={() => handleLink(inst.id, null)}
+                        >
+                          <Link2Off className="size-3" />
+                        </Button>
+                      )}
+                    </div>
+                  ) : canEdit && onLinkFreelancerInvoice && freelancerInvoices.length > 0 ? (
+                    <Select
+                      value=""
+                      onValueChange={(v) => { if (v) handleLink(inst.id, v); }}
+                      disabled={isLinking}
+                    >
+                      <SelectTrigger className="h-7 w-40 text-xs">
+                        <div className="flex items-center gap-1">
+                          <Link className="size-3" />
+                          <SelectValue placeholder="Vincular…" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {freelancerInvoices.map((inv) => (
+                          <SelectItem key={inv.id} value={inv.id}>
+                            {inv.freelancer_name} — {formatCurrency(inv.amount)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </TableCell>
+                {canEdit && (
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <CostInstallmentDialog
+                        installment={inst}
+                        onSubmit={(input) => onUpdate(inst.id, input)}
+                        trigger={
+                          <Button variant="ghost" size="icon" aria-label="Editar cuota de costo">
+                            <Pencil className="size-4" />
+                          </Button>
+                        }
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label="Eliminar cuota de costo"
+                        onClick={() => handleDelete(inst.id)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+export function CostSchedulePanel({
+  financials,
+  costInstallments,
+  freelancerInvoices,
+  canEdit,
+  onSetCostPaymentType,
+  onCreate,
+  onUpdate,
+  onDelete,
+  onDeleteAll,
+  onGenerateSchedule,
+  onLinkFreelancerInvoice,
+}: {
+  financials: ProjectFinancials | null;
+  costInstallments: ProjectCostInstallmentWithRelations[];
+  freelancerInvoices: FreelancerInvoiceWithRelations[];
+  canEdit: boolean;
+  onSetCostPaymentType: (type: string) => Promise<void>;
+  onCreate: (input: CostInstallmentInput) => Promise<void>;
+  onUpdate: (id: string, input: CostInstallmentInput) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  onDeleteAll: () => Promise<void>;
+  onGenerateSchedule: () => Promise<void>;
+  onLinkFreelancerInvoice?: (installmentId: string, invoiceId: string | null) => Promise<void>;
+}) {
+  const router = useRouter();
+  const [generating, setGenerating] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const costType = financials?.cost_payment_type ?? null;
+  const directCost = financials?.direct_cost ?? 0;
+  const budgetSold = financials?.budget_sold || 1;
+  const ratioPct = Math.round((directCost / budgetSold) * 100 * 10) / 10;
+
+  async function handleSetType(type: string) {
+    await onSetCostPaymentType(type);
+    router.refresh();
+  }
+
+  async function handleGenerate() {
+    setGenerating(true);
+    setError(null);
+    try {
+      await onGenerateSchedule();
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ocurrió un error");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleDeleteAll() {
+    setDeletingAll(true);
+    try {
+      await onDeleteAll();
+      router.refresh();
+    } finally {
+      setDeletingAll(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-base">Plan de pagos al freelancer</CardTitle>
+        {costType && canEdit && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground"
+            onClick={() => handleSetType(costType === "with_collection" ? "custom" : "with_collection")}
+          >
+            Cambiar a {costType === "with_collection" ? "manual" : "espejo de cobranza"}
+          </Button>
+        )}
+      </CardHeader>
+      <CardContent>
+        {!costType ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              ¿Cuándo se paga al freelancer? El costo directo es{" "}
+              <strong>{formatCurrency(directCost)}</strong> ({ratioPct}% del precio base).
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                onClick={() => handleSetType("with_collection")}
+                className={cn(
+                  "flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors",
+                  "hover:border-primary hover:bg-primary/5",
+                )}
+              >
+                <div className="flex items-center gap-2 font-medium">
+                  <HandCoins className="size-4 text-primary" />
+                  Espejo de cobranza
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Cuotas proporcionales al plan de cobro del cliente ({ratioPct}% c/u).
+                </p>
+              </button>
+              <button
+                onClick={() => handleSetType("custom")}
+                className={cn(
+                  "flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors",
+                  "hover:border-primary hover:bg-primary/5",
+                )}
+              >
+                <div className="flex items-center gap-2 font-medium">
+                  <Pencil className="size-4 text-primary" />
+                  Manual
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Define cuotas al freelancer con monto y fecha propios.
+                </p>
+              </button>
+            </div>
+          </div>
+        ) : costType === "with_collection" && costInstallments.length === 0 ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Se espejará el plan de cobro con proporción {ratioPct}% (costo / precio base).
+            </p>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            {canEdit && (
+              <Button size="sm" onClick={handleGenerate} disabled={generating}>
+                {generating ? "Generando..." : "Generar según cobranza"}
+              </Button>
+            )}
+          </div>
+        ) : costType === "with_collection" ? (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                Proporción: <strong className="text-foreground">{ratioPct}%</strong> del cobro
+              </p>
+              {canEdit && (
+                <Button variant="outline" size="sm" disabled={deletingAll} onClick={handleDeleteAll}>
+                  <RotateCcw className="size-4" />
+                  {deletingAll ? "Eliminando..." : "Regenerar"}
+                </Button>
+              )}
+            </div>
+            <CostInstallmentTable
+              installments={costInstallments}
+              canEdit={canEdit}
+              freelancerInvoices={freelancerInvoices}
+              onUpdate={onUpdate}
+              onDelete={onDelete}
+              onLinkFreelancerInvoice={onLinkFreelancerInvoice}
+            />
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {canEdit && (
+              <CostInstallmentDialog
+                onSubmit={onCreate}
+                trigger={
+                  <Button size="sm">
+                    <Plus className="size-4" /> Nueva cuota de costo
+                  </Button>
+                }
+              />
+            )}
+            {costInstallments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Sin cuotas de costo registradas.</p>
+            ) : (
+              <CostInstallmentTable
+                installments={costInstallments}
+                canEdit={canEdit}
+                freelancerInvoices={freelancerInvoices}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+                onLinkFreelancerInvoice={onLinkFreelancerInvoice}
+              />
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

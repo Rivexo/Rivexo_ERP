@@ -157,6 +157,15 @@ export async function generateProjectFinancingSchedule(projectId: string, dealId
   if (error) throw error;
 }
 
+export async function linkInvoiceToInstallment(installmentId: string, invoiceId: string | null): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("deal_payment_installments")
+    .update({ invoice_id: invoiceId })
+    .eq("id", installmentId);
+  if (error) throw error;
+}
+
 export type AccountsReceivableRow = {
   id: string;
   deal_id: string;

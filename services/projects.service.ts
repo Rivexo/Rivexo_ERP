@@ -109,6 +109,7 @@ export async function updateProjectPaymentConfig(
   projectId: string,
   config: {
     payment_type?: string | null;
+    cost_payment_type?: string | null;
     financing_term_months?: number | null;
     interest_rate_annual?: number | null;
     credit_start_date?: string | null;

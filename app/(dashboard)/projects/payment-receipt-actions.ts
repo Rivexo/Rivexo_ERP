@@ -8,6 +8,7 @@ import {
   applyPaymentToInvoice,
   removeInvoiceApplication,
   deleteCustomerPayment,
+  uploadPaymentComplement,
 } from "@/services/customer-payments.service";
 import { getProject } from "@/services/projects.service";
 
@@ -76,5 +77,21 @@ export async function removeApplicationAction(
 
 export async function deletePaymentAction(projectId: string, paymentId: string): Promise<void> {
   await deleteCustomerPayment(paymentId);
+  revalidate(projectId);
+}
+
+export async function uploadPaymentComplementAction(
+  projectId: string,
+  paymentId: string,
+  formData: FormData,
+): Promise<void> {
+  const pdf = formData.get("complement_pdf");
+  const xml = formData.get("complement_xml");
+  await uploadPaymentComplement(
+    paymentId,
+    projectId,
+    pdf instanceof File ? pdf : null,
+    xml instanceof File ? xml : null,
+  );
   revalidate(projectId);
 }
