@@ -14,6 +14,7 @@ import {
 
 function revalidate(projectId: string) {
   revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/finances`);
 }
 
 export async function setCostPaymentTypeAction(

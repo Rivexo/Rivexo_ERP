@@ -15,6 +15,18 @@ export async function listInstallmentsByDeal(dealId: string): Promise<Installmen
   return data;
 }
 
+export async function listPendingInstallmentsByProject(projectId: string): Promise<Installment[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("deal_payment_installments")
+    .select("*")
+    .eq("project_id", projectId)
+    .in("status", ["pending", "invoiced"])
+    .order("due_date", { ascending: true, nullsFirst: false });
+  if (error) throw error;
+  return data;
+}
+
 export async function createInstallment(dealId: string, input: InstallmentInput): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase.from("deal_payment_installments").insert({ deal_id: dealId, ...input });
@@ -181,7 +193,7 @@ export async function getAccountsReceivable(): Promise<AccountsReceivableRow[]> 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("deal_payment_installments")
-    .select("id, deal_id, label, amount, due_date, status, deal:deals(name, account:accounts(name))")
+    .select("id, deal_id, label, amount, due_date, status, deal:deals(name, stage:pipeline_stages(is_won), account:accounts(name))")
     .in("status", ["pending", "invoiced"])
     .order("due_date", { ascending: true, nullsFirst: false });
   if (error) throw error;
@@ -193,16 +205,18 @@ export async function getAccountsReceivable(): Promise<AccountsReceivableRow[]> 
     label: string;
     amount: number;
     due_date: string | null;
-    deal: { name: string; account: { name: string } | null } | null;
+    deal: { name: string; stage: { is_won: boolean } | null; account: { name: string } | null } | null;
   };
-  return (data as unknown as Row[]).map((row) => ({
-    id: row.id,
-    deal_id: row.deal_id,
-    deal_name: row.deal?.name ?? "—",
-    account_name: row.deal?.account?.name ?? "—",
-    label: row.label,
-    amount: row.amount,
-    due_date: row.due_date,
-    is_overdue: !!row.due_date && row.due_date < today,
-  }));
+  return (data as unknown as Row[])
+    .filter((row) => row.deal?.stage?.is_won === true)
+    .map((row) => ({
+      id: row.id,
+      deal_id: row.deal_id,
+      deal_name: row.deal?.name ?? "—",
+      account_name: row.deal?.account?.name ?? "—",
+      label: row.label,
+      amount: row.amount,
+      due_date: row.due_date,
+      is_overdue: !!row.due_date && row.due_date < today,
+    }));
 }

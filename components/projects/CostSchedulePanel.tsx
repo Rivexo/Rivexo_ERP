@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { HandCoins, Link, Link2Off, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { HandCoins, Link, Link2Off, Pencil, Plus, RotateCcw, Trash2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -296,6 +296,7 @@ export function CostSchedulePanel({
   onLinkFreelancerInvoice?: (installmentId: string, invoiceId: string | null) => Promise<void>;
 }) {
   const router = useRouter();
+  const [costTab, setCostTab] = useState<"freelancer" | "employee">("freelancer");
   const [generating, setGenerating] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -336,8 +337,8 @@ export function CostSchedulePanel({
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base">Plan de pagos al freelancer</CardTitle>
-        {costType && canEdit && (
+        <CardTitle className="text-base">Pago a proveedores</CardTitle>
+        {costTab === "freelancer" && costType && canEdit && (
           <Button
             variant="ghost"
             size="sm"
@@ -349,94 +350,99 @@ export function CostSchedulePanel({
         )}
       </CardHeader>
       <CardContent>
-        {!costType ? (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              ¿Cuándo se paga al freelancer? El costo directo es{" "}
-              <strong>{formatCurrency(directCost)}</strong> ({ratioPct}% del precio base).
-            </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button
-                onClick={() => handleSetType("with_collection")}
-                className={cn(
-                  "flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors",
-                  "hover:border-primary hover:bg-primary/5",
-                )}
-              >
-                <div className="flex items-center gap-2 font-medium">
-                  <HandCoins className="size-4 text-primary" />
-                  Espejo de cobranza
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Cuotas proporcionales al plan de cobro del cliente ({ratioPct}% c/u).
-                </p>
-              </button>
-              <button
-                onClick={() => handleSetType("custom")}
-                className={cn(
-                  "flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors",
-                  "hover:border-primary hover:bg-primary/5",
-                )}
-              >
-                <div className="flex items-center gap-2 font-medium">
-                  <Pencil className="size-4 text-primary" />
-                  Manual
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Define cuotas al freelancer con monto y fecha propios.
-                </p>
-              </button>
-            </div>
-          </div>
-        ) : costType === "with_collection" && costInstallments.length === 0 ? (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Se espejará el plan de cobro con proporción {ratioPct}% (costo / precio base).
-            </p>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            {canEdit && (
-              <Button size="sm" onClick={handleGenerate} disabled={generating}>
-                {generating ? "Generando..." : "Generar según cobranza"}
-              </Button>
+        {/* Tipo de costo tabs */}
+        <div className="flex gap-1 border-b pb-3 mb-4">
+          <button
+            type="button"
+            onClick={() => setCostTab("freelancer")}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              costTab === "freelancer"
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:text-foreground",
             )}
-          </div>
-        ) : costType === "with_collection" ? (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
+          >
+            Freelancer
+          </button>
+          <span
+            title="Disponible cuando contrates personal fijo"
+            className="inline-flex cursor-not-allowed"
+          >
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground/40 pointer-events-none"
+            >
+              <Users className="size-3.5" />
+              Empleado
+            </button>
+          </span>
+        </div>
+        {costTab === "freelancer" ? (
+          !costType ? (
+            <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Proporción: <strong className="text-foreground">{ratioPct}%</strong> del cobro
+                ¿Cuándo se paga al freelancer? El costo directo es{" "}
+                <strong>{formatCurrency(directCost)}</strong> ({ratioPct}% del precio base).
               </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  onClick={() => handleSetType("with_collection")}
+                  className={cn(
+                    "flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors",
+                    "hover:border-primary hover:bg-primary/5",
+                  )}
+                >
+                  <div className="flex items-center gap-2 font-medium">
+                    <HandCoins className="size-4 text-primary" />
+                    Espejo de cobranza
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Cuotas proporcionales al plan de cobro del cliente ({ratioPct}% c/u).
+                  </p>
+                </button>
+                <button
+                  onClick={() => handleSetType("custom")}
+                  className={cn(
+                    "flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors",
+                    "hover:border-primary hover:bg-primary/5",
+                  )}
+                >
+                  <div className="flex items-center gap-2 font-medium">
+                    <Pencil className="size-4 text-primary" />
+                    Manual
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Define cuotas al freelancer con monto y fecha propios.
+                  </p>
+                </button>
+              </div>
+            </div>
+          ) : costType === "with_collection" && costInstallments.length === 0 ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Se espejará el plan de cobro con proporción {ratioPct}% (costo / precio base).
+              </p>
+              {error && <p className="text-sm text-destructive">{error}</p>}
               {canEdit && (
-                <Button variant="outline" size="sm" disabled={deletingAll} onClick={handleDeleteAll}>
-                  <RotateCcw className="size-4" />
-                  {deletingAll ? "Eliminando..." : "Regenerar"}
+                <Button size="sm" onClick={handleGenerate} disabled={generating}>
+                  {generating ? "Generando..." : "Generar según cobranza"}
                 </Button>
               )}
             </div>
-            <CostInstallmentTable
-              installments={costInstallments}
-              canEdit={canEdit}
-              freelancerInvoices={freelancerInvoices}
-              onUpdate={onUpdate}
-              onDelete={onDelete}
-              onLinkFreelancerInvoice={onLinkFreelancerInvoice}
-            />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {canEdit && (
-              <CostInstallmentDialog
-                onSubmit={onCreate}
-                trigger={
-                  <Button size="sm">
-                    <Plus className="size-4" /> Nueva cuota de costo
+          ) : costType === "with_collection" ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Proporción: <strong className="text-foreground">{ratioPct}%</strong> del cobro
+                </p>
+                {canEdit && (
+                  <Button variant="outline" size="sm" disabled={deletingAll} onClick={handleDeleteAll}>
+                    <RotateCcw className="size-4" />
+                    {deletingAll ? "Eliminando..." : "Regenerar"}
                   </Button>
-                }
-              />
-            )}
-            {costInstallments.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Sin cuotas de costo registradas.</p>
-            ) : (
+                )}
+              </div>
               <CostInstallmentTable
                 installments={costInstallments}
                 canEdit={canEdit}
@@ -445,7 +451,43 @@ export function CostSchedulePanel({
                 onDelete={onDelete}
                 onLinkFreelancerInvoice={onLinkFreelancerInvoice}
               />
-            )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {canEdit && (
+                <CostInstallmentDialog
+                  onSubmit={onCreate}
+                  trigger={
+                    <Button size="sm">
+                      <Plus className="size-4" /> Nueva cuota de costo
+                    </Button>
+                  }
+                />
+              )}
+              {costInstallments.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sin cuotas de costo registradas.</p>
+              ) : (
+                <CostInstallmentTable
+                  installments={costInstallments}
+                  canEdit={canEdit}
+                  freelancerInvoices={freelancerInvoices}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                  onLinkFreelancerInvoice={onLinkFreelancerInvoice}
+                />
+              )}
+            </div>
+          )
+        ) : (
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <Users className="size-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">
+              Esta sección estará disponible cuando incorpores personal fijo al equipo.
+            </p>
+            <p className="text-xs text-muted-foreground/60">
+              Las asignaciones de tiempo se registrarán en la tabla <code>time_allocations</code> y se
+              reflejarán automáticamente en costos y balance general.
+            </p>
           </div>
         )}
       </CardContent>

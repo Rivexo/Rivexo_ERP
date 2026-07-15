@@ -5,8 +5,21 @@ import { RevenueForecast } from "@/components/erp/RevenueForecast";
 import { canAccessErp } from "@/lib/permissions";
 import { getCurrentProfile } from "@/services/profiles.service";
 import { listRevenues, listAllInstallmentsWithProject, getRevenueForecast, getExpenseForecast } from "@/services/revenues.service";
+import type { ForecastRow, ForecastSummary } from "@/services/revenues.service";
 import { listProjects } from "@/services/projects.service";
 import { createRevenueAction, deleteRevenueAction, updateRevenueAction } from "./actions";
+
+function buildSummary(rows: ForecastRow[]): ForecastSummary {
+  const today = new Date().toISOString().slice(0, 10);
+  const thisMonthStart = today.slice(0, 7) + "-01";
+  const nextMonthStart = (() => { const d = new Date(); d.setMonth(d.getMonth() + 1, 1); return d.toISOString().slice(0, 10); })();
+  return {
+    total_committed: rows.reduce((s, r) => s + r.amount, 0),
+    due_this_month: rows.filter((r) => r.due_date && r.due_date >= thisMonthStart && r.due_date < nextMonthStart).reduce((s, r) => s + r.amount, 0),
+    overdue: rows.filter((r) => r.is_overdue).reduce((s, r) => s + r.amount, 0),
+    rows,
+  };
+}
 
 export default async function ErpRevenuesPage() {
   const profile = await getCurrentProfile();
@@ -20,6 +33,9 @@ export default async function ErpRevenuesPage() {
     getExpenseForecast(),
   ]);
 
+  const projectForecast = buildSummary(forecast.rows.filter((r) => r.source === "project"));
+  const supportForecast = buildSummary(forecast.rows.filter((r) => r.source === "support"));
+
   return (
     <div className="space-y-8">
       <div>
@@ -29,13 +45,23 @@ export default async function ErpRevenuesPage() {
         />
       </div>
 
-      {/* Forecast — cuotas pendientes de deals ganados */}
+      {/* Forecast — Deployment */}
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Forecast de cobranza
+          Forecast — Proyectos (Deployment)
         </h2>
-        <RevenueForecast forecast={forecast} />
+        <RevenueForecast forecast={projectForecast} />
       </section>
+
+      {/* Forecast — Soporte MRR (solo cuando hay proyectos en etapa S) */}
+      {supportForecast.rows.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Soporte MRR
+          </h2>
+          <RevenueForecast forecast={supportForecast} />
+        </section>
+      )}
 
       {expenseForecast.length > 0 && (
         <section className="border-t pt-6">

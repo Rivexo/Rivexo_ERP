@@ -31,12 +31,13 @@ export default async function AccountsPayablePage() {
       </div>
 
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No hay facturas pendientes de pago.</p>
+        <p className="text-sm text-muted-foreground">No hay cuentas por pagar pendientes.</p>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Freelancer</TableHead>
+              <TableHead>Tipo</TableHead>
+              <TableHead>Descripción</TableHead>
               <TableHead>Proyecto</TableHead>
               <TableHead>Monto</TableHead>
               <TableHead>Vencimiento</TableHead>
@@ -45,8 +46,13 @@ export default async function AccountsPayablePage() {
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={row.id}>
-                <TableCell className="font-medium">{row.freelancer_name}</TableCell>
+              <TableRow key={`${row.source}-${row.id}`}>
+                <TableCell>
+                  <Badge variant="outline">
+                    {row.source === "freelancer_invoice" ? "Freelancer" : "Plan de costo"}
+                  </Badge>
+                </TableCell>
+                <TableCell className="font-medium">{row.description}</TableCell>
                 <TableCell>{row.project_name}</TableCell>
                 <TableCell>{formatCurrency(row.amount)}</TableCell>
                 <TableCell>

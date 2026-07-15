@@ -88,7 +88,8 @@ export async function deleteFreelancerInvoice(id: string): Promise<void> {
 
 export type AccountsPayableRow = {
   id: string;
-  freelancer_name: string;
+  source: "freelancer_invoice" | "cost_installment";
+  description: string;
   project_name: string;
   amount: number;
   due_date: string | null;
@@ -97,21 +98,51 @@ export type AccountsPayableRow = {
 
 export async function getAccountsPayable(): Promise<AccountsPayableRow[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("freelancer_invoices")
-    .select("id, freelancer_name, amount, due_date, project:projects(name)")
-    .eq("status", "pending")
-    .order("due_date", { ascending: true, nullsFirst: false });
-  if (error) throw error;
-
   const today = new Date().toISOString().slice(0, 10);
-  type Row = { id: string; freelancer_name: string; amount: number; due_date: string | null; project: { name: string } | null };
-  return (data as unknown as Row[]).map((row) => ({
+
+  const [invoicesResult, costResult] = await Promise.all([
+    supabase
+      .from("freelancer_invoices")
+      .select("id, freelancer_name, amount, due_date, project:projects(name)")
+      .eq("status", "pending"),
+    supabase
+      .from("project_cost_installments")
+      .select("id, label, amount, due_date, project:projects(name)")
+      .eq("status", "pending"),
+  ]);
+
+  if (invoicesResult.error) throw invoicesResult.error;
+  if (costResult.error) throw costResult.error;
+
+  type InvoiceRow = { id: string; freelancer_name: string; amount: number; due_date: string | null; project: { name: string } | null };
+  type CostRow = { id: string; label: string; amount: number; due_date: string | null; project: { name: string } | null };
+
+  const invoiceRows: AccountsPayableRow[] = (invoicesResult.data as unknown as InvoiceRow[]).map((row) => ({
     id: row.id,
-    freelancer_name: row.freelancer_name,
+    source: "freelancer_invoice",
+    description: row.freelancer_name,
     project_name: row.project?.name ?? "—",
     amount: row.amount,
     due_date: row.due_date,
     is_overdue: !!row.due_date && row.due_date < today,
   }));
+
+  const costRows: AccountsPayableRow[] = (costResult.data as unknown as CostRow[]).map((row) => ({
+    id: row.id,
+    source: "cost_installment",
+    description: row.label,
+    project_name: row.project?.name ?? "—",
+    amount: row.amount,
+    due_date: row.due_date,
+    is_overdue: !!row.due_date && row.due_date < today,
+  }));
+
+  const all = [...invoiceRows, ...costRows];
+  all.sort((a, b) => {
+    if (!a.due_date && !b.due_date) return 0;
+    if (!a.due_date) return 1;
+    if (!b.due_date) return -1;
+    return a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0;
+  });
+  return all;
 }

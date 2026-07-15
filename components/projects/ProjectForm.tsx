@@ -56,10 +56,6 @@ export function ProjectForm({
       status: project.status,
       progress_pct: project.progress_pct,
       budget_sold: financials?.budget_sold ?? null,
-      direct_cost: financials?.direct_cost ?? null,
-      is_financed: financials?.is_financed ?? false,
-      financed_total: financials?.financed_total ?? null,
-      financing_term_months: financials?.financing_term_months ?? null,
     },
   });
 
@@ -158,47 +154,10 @@ export function ProjectForm({
         </div>
 
         {canManageFinancials && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="budget_sold">Presupuesto vendido</Label>
-              <Input id="budget_sold" type="number" step="0.01" min={0} {...register("budget_sold")} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="direct_cost">Costo directo</Label>
-              <Input id="direct_cost" type="number" step="0.01" min={0} {...register("direct_cost")} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Forma de cobro</Label>
-              <Select
-                value={watch("is_financed") ? "financiado" : "contado"}
-                onValueChange={(value) => setValue("is_financed", value === "financiado")}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Forma de cobro">
-                    {(value: string | null) => (value === "financiado" ? "Financiado" : "Contado")}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="contado">Contado</SelectItem>
-                  <SelectItem value="financiado">Financiado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {watch("is_financed") && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="financed_total">Total financiado (con intereses)</Label>
-                  <Input id="financed_total" type="number" step="0.01" min={0} {...register("financed_total")} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="financing_term_months">Plazo (meses)</Label>
-                  <Input id="financing_term_months" type="number" min={1} {...register("financing_term_months")} />
-                </div>
-              </>
-            )}
-          </>
+          <div className="space-y-2">
+            <Label htmlFor="budget_sold">Presupuesto vendido</Label>
+            <Input id="budget_sold" type="number" step="0.01" min={0} {...register("budget_sold")} />
+          </div>
         )}
       </div>
 

@@ -49,6 +49,7 @@ export type ForecastRow = {
   due_date: string | null;
   is_overdue: boolean;
   status: "pending" | "invoiced" | "paid";
+  source: "project" | "support";
 };
 
 export type ForecastSummary = {
@@ -60,14 +61,30 @@ export type ForecastSummary = {
 
 export async function getRevenueForecast(): Promise<ForecastSummary> {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("deal_payment_installments")
-    .select("id, deal_id, label, amount, due_date, status, deal:deals(name, account:accounts(name), stage:pipeline_stages(is_won))")
-    .in("status", ["pending", "invoiced"])
-    .order("due_date", { ascending: true, nullsFirst: false });
-  if (error) throw error;
-
   const today = new Date().toISOString().slice(0, 10);
+
+  const [installmentsResult, subscriptionsResult] = await Promise.all([
+    supabase
+      .from("deal_payment_installments")
+      .select("id, deal_id, project_id, label, amount, due_date, status, deal:deals(name, account:accounts(name), stage:pipeline_stages(is_won))")
+      .in("status", ["pending", "invoiced"])
+      .order("due_date", { ascending: true, nullsFirst: false }),
+    supabase
+      .from("monthly_support_subscriptions")
+      .select("project_id")
+      .eq("status", "active")
+      .lte("start_date", today),
+  ]);
+
+  if (installmentsResult.error) throw installmentsResult.error;
+  if (subscriptionsResult.error) throw subscriptionsResult.error;
+
+  const supportProjectIds = new Set(
+    (subscriptionsResult.data ?? [])
+      .filter((s) => s.project_id)
+      .map((s) => s.project_id as string),
+  );
+
   const thisMonthStart = today.slice(0, 7) + "-01";
   const nextMonthStart = (() => {
     const d = new Date();
@@ -78,6 +95,7 @@ export async function getRevenueForecast(): Promise<ForecastSummary> {
   type Raw = {
     id: string;
     deal_id: string;
+    project_id: string | null;
     label: string;
     amount: number;
     due_date: string | null;
@@ -85,7 +103,7 @@ export async function getRevenueForecast(): Promise<ForecastSummary> {
     deal: { name: string; account: { name: string } | null; stage: { is_won: boolean } | null } | null;
   };
 
-  const wonRows = (data as unknown as Raw[])
+  const wonRows = (installmentsResult.data as unknown as Raw[])
     .filter((r) => r.deal?.stage?.is_won === true)
     .map((r) => ({
       id: r.id,
@@ -97,15 +115,14 @@ export async function getRevenueForecast(): Promise<ForecastSummary> {
       due_date: r.due_date,
       is_overdue: !!r.due_date && r.due_date < today,
       status: r.status as ForecastRow["status"],
+      source: (r.project_id && supportProjectIds.has(r.project_id) ? "support" : "project") as ForecastRow["source"],
     }));
 
   const total_committed = wonRows.reduce((s, r) => s + r.amount, 0);
   const due_this_month = wonRows
     .filter((r) => r.due_date && r.due_date >= thisMonthStart && r.due_date < nextMonthStart)
     .reduce((s, r) => s + r.amount, 0);
-  const overdue = wonRows
-    .filter((r) => r.is_overdue)
-    .reduce((s, r) => s + r.amount, 0);
+  const overdue = wonRows.filter((r) => r.is_overdue).reduce((s, r) => s + r.amount, 0);
 
   return { total_committed, due_this_month, overdue, rows: wonRows };
 }

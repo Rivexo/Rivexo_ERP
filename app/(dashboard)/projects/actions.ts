@@ -18,10 +18,6 @@ export async function updateProjectAction(id: string, input: ProjectInput): Prom
   // the caller never actually had permission to change.
   if (!profile || !canManageProjectFinancials(profile.role)) {
     parsed.budget_sold = undefined;
-    parsed.direct_cost = undefined;
-    parsed.is_financed = undefined;
-    parsed.financed_total = undefined;
-    parsed.financing_term_months = undefined;
   }
 
   await updateProject(id, parsed);

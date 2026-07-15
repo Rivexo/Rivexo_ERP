@@ -11,6 +11,7 @@ import {
   Lightbulb,
   ScrollText,
   ShieldAlert,
+  Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,13 +27,18 @@ const TABS = [
   { href: "/history", label: "Historial", icon: History },
 ];
 
-export function ProjectTabNav({ projectId }: { projectId: string }) {
+export function ProjectTabNav({ projectId, showFinances = false }: { projectId: string; showFinances?: boolean }) {
   const pathname = usePathname();
   const base = `/projects/${projectId}`;
 
+  const visibleTabs = [
+    ...TABS,
+    ...(showFinances ? [{ href: "/finances", label: "Finanzas", icon: Wallet }] : []),
+  ];
+
   return (
     <nav className="flex gap-1 overflow-x-auto border-b">
-      {TABS.map((tab) => {
+      {visibleTabs.map((tab) => {
         const href = `${base}${tab.href}`;
         const isActive = pathname === href;
         return (

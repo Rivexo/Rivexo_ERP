@@ -14,6 +14,7 @@ import { getProject } from "@/services/projects.service";
 
 function revalidate(projectId: string) {
   revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/finances`);
   revalidatePath("/erp/invoices");
 }
 

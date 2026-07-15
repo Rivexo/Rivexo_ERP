@@ -161,6 +161,7 @@ function FinancingForm({
 function InstallmentTable({
   installments,
   canEdit,
+  budgetSold,
   customerInvoices,
   onUpdate,
   onDelete,
@@ -168,6 +169,7 @@ function InstallmentTable({
 }: {
   installments: Installment[];
   canEdit: boolean;
+  budgetSold?: number;
   customerInvoices: CustomerInvoiceWithRelations[];
   onUpdate: (id: string, input: InstallmentInput) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -176,6 +178,7 @@ function InstallmentTable({
   const router = useRouter();
   const today = new Date().toISOString().slice(0, 10);
   const [linkingId, setLinkingId] = useState<string | null>(null);
+  const showPct = !!budgetSold && budgetSold > 0;
 
   const total = installments.reduce((s, i) => s + i.amount, 0);
   const paid = installments.filter((i) => i.status === "paid").reduce((s, i) => s + i.amount, 0);
@@ -210,6 +213,7 @@ function InstallmentTable({
         <TableHeader>
           <TableRow>
             <TableHead>Etiqueta</TableHead>
+            {showPct && <TableHead>%</TableHead>}
             <TableHead>Monto</TableHead>
             <TableHead>Vencimiento</TableHead>
             <TableHead>Estatus</TableHead>
@@ -227,6 +231,11 @@ function InstallmentTable({
             return (
               <TableRow key={inst.id}>
                 <TableCell className="font-medium">{inst.label}</TableCell>
+                {showPct && (
+                  <TableCell className="tabular-nums text-muted-foreground text-xs">
+                    {((inst.amount / budgetSold!) * 100).toFixed(1)}%
+                  </TableCell>
+                )}
                 <TableCell className="tabular-nums">{formatCurrency(inst.amount)}</TableCell>
                 <TableCell>
                   {inst.due_date
@@ -424,6 +433,7 @@ export function PaymentPlanPanel({
             {canEdit && (
               <PaymentScheduleDialog
                 onSubmit={onCreate}
+                budgetSold={financials?.budget_sold}
                 trigger={
                   <Button size="sm">
                     <Plus className="size-4" /> Nueva cuota
@@ -437,6 +447,7 @@ export function PaymentPlanPanel({
               <InstallmentTable
                 installments={installments}
                 canEdit={canEdit}
+                budgetSold={financials?.budget_sold}
                 customerInvoices={customerInvoices}
                 onUpdate={onUpdate}
                 onDelete={onDelete}
@@ -486,9 +497,36 @@ export function PaymentPlanPanel({
                     </Button>
                   )}
                 </div>
+                {(() => {
+                  const totalCuotas = installments.reduce((s, i) => s + i.amount, 0);
+                  const downPay = financials?.down_payment ?? 0;
+                  const principal = (financials?.budget_sold ?? 0) - downPay;
+                  const interestIncome = totalCuotas - principal;
+                  return (
+                    <div className="rounded-md border bg-muted/30 px-4 py-3 text-sm space-y-1">
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <span>Modalidad</span>
+                        <span className="font-medium text-foreground">
+                          {downPay > 0 ? "Con enganche" : "Sin enganche"}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-muted-foreground">
+                        <span>Total a cobrar</span>
+                        <span className="tabular-nums font-medium text-foreground">{formatCurrency(totalCuotas)}</span>
+                      </div>
+                      {interestIncome > 0 && (
+                        <div className="flex items-center justify-between font-semibold pt-1 border-t">
+                          <span>Ingresos por intereses</span>
+                          <span className="tabular-nums text-emerald-600">{formatCurrency(interestIncome)}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
                 <InstallmentTable
                   installments={installments}
                   canEdit={canEdit}
+                  budgetSold={financials?.budget_sold}
                   customerInvoices={customerInvoices}
                   onUpdate={onUpdate}
                   onDelete={onDelete}
