@@ -26,3 +26,34 @@ export async function updateProjectIdeasPhase(id: string, input: IdeasPhaseInput
   const { error } = await supabase.from("project_ideas_phases").update(input).eq("id", id);
   if (error) throw error;
 }
+
+// Fase actual = primera fase IDEAS no-terminada por orden (I,D,E,A,S); si todas
+// están "done" cae en la última (S). Misma regla que listProjectsWithCurrentPhase
+// en projects.service.ts, en lote para múltiples proyectos (usado por el forecast).
+export async function getCurrentPhaseByProject(projectIds: string[]): Promise<Map<string, string | null>> {
+  const result = new Map<string, string | null>();
+  if (projectIds.length === 0) return result;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("project_ideas_phases")
+    .select("project_id, status, phase:ideas_phases(code, order_index)")
+    .in("project_id", projectIds);
+  if (error) throw error;
+
+  type Row = { project_id: string; status: string; phase: { code: string; order_index: number } };
+  const byProject = new Map<string, Row[]>();
+  for (const row of data as unknown as Row[]) {
+    const list = byProject.get(row.project_id) ?? [];
+    list.push(row);
+    byProject.set(row.project_id, list);
+  }
+
+  for (const [projectId, rows] of byProject) {
+    const sorted = rows.sort((a, b) => a.phase.order_index - b.phase.order_index);
+    const current = sorted.find((r) => r.status !== "done") ?? sorted[sorted.length - 1];
+    result.set(projectId, current?.phase.code ?? null);
+  }
+
+  return result;
+}

@@ -10,6 +10,7 @@ import {
   updateVariableExpense,
   uploadExpenseConciliation,
 } from "@/services/variable-expenses.service";
+import { createEmployee, updateEmployeeActive, accrueMonthlyPayroll } from "@/services/employees.service";
 
 export async function createFixedCostAction(input: FixedCostInput): Promise<void> {
   const parsed = fixedCostSchema.parse(input);
@@ -54,4 +55,22 @@ export async function uploadExpenseConciliationAction(id: string, formData: Form
     xml instanceof File ? xml : null,
   );
   revalidatePath("/erp/costs");
+}
+
+export async function createEmployeeAction(input: { full_name: string; monthly_salary: number }): Promise<void> {
+  await createEmployee(input);
+  revalidatePath("/erp/costs");
+}
+
+export async function updateEmployeeActiveAction(id: string, active: boolean): Promise<void> {
+  await updateEmployeeActive(id, active);
+  revalidatePath("/erp/costs");
+}
+
+export async function accruePayrollAction(): Promise<number> {
+  const created = await accrueMonthlyPayroll(new Date().toISOString().slice(0, 10));
+  revalidatePath("/erp/costs");
+  revalidatePath("/erp/accounting/balance-sheet");
+  revalidatePath("/erp/accounting/journal");
+  return created;
 }

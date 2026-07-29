@@ -7,6 +7,8 @@ export const costInstallmentSchema = z.object({
   amount: z.coerce.number().min(0, "El monto debe ser mayor o igual a 0"),
   due_date: z.preprocess(emptyToNull, z.string().nullable().optional()),
   notes: z.preprocess(emptyToNull, z.string().nullable().optional()),
+  payee_type: z.enum(["freelancer", "employee"]).default("freelancer"),
+  employee_id: z.preprocess(emptyToNull, z.string().nullable().optional()),
 });
 
 export type CostInstallmentFormValues = z.input<typeof costInstallmentSchema>;

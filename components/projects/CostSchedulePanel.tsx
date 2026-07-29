@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { HandCoins, Link, Link2Off, Pencil, Plus, RotateCcw, Trash2, Users } from "lucide-react";
+import { CheckCircle2, HandCoins, Link, Link2Off, Pencil, Plus, RotateCcw, Trash2, Undo2, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +32,7 @@ import type { FreelancerInvoiceWithRelations } from "@/services/freelancer-invoi
 
 const STATUS_LABELS: Record<string, string> = { pending: "Pendiente", paid: "Pagada" };
 const STATUS_VARIANT: Record<string, "outline" | "secondary"> = { pending: "outline", paid: "secondary" };
+const PAYEE_LABELS: Record<string, string> = { freelancer: "Freelancer", employee: "Empleado" };
 
 function CostInstallmentDialog({
   installment,
@@ -46,6 +47,9 @@ function CostInstallmentDialog({
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [payeeType, setPayeeType] = useState<"freelancer" | "employee">(
+    (installment?.payee_type as "freelancer" | "employee") ?? "freelancer",
+  );
   const formRef = useRef<HTMLFormElement>(null);
 
   async function submit(e: React.FormEvent) {
@@ -59,6 +63,8 @@ function CostInstallmentDialog({
         amount: Number(fd.get("amount")),
         due_date: (fd.get("due_date") as string) || null,
         notes: (fd.get("notes") as string) || null,
+        payee_type: payeeType,
+        employee_id: null,
       });
       formRef.current?.reset();
       setOpen(false);
@@ -93,6 +99,20 @@ function CostInstallmentDialog({
             </div>
           </div>
           <div className="space-y-2">
+            <Label htmlFor="ci-payee">Beneficiario</Label>
+            <Select value={payeeType} onValueChange={(v) => setPayeeType(v as "freelancer" | "employee")}>
+              <SelectTrigger id="ci-payee">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="freelancer">Freelancer</SelectItem>
+                <SelectItem value="employee" disabled>
+                  Empleado (próximamente)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="ci-notes">Notas</Label>
             <Input id="ci-notes" name="notes" defaultValue={installment?.notes ?? ""} />
           </div>
@@ -115,6 +135,7 @@ function CostInstallmentTable({
   onUpdate,
   onDelete,
   onLinkFreelancerInvoice,
+  onUpdateStatus,
 }: {
   installments: ProjectCostInstallmentWithRelations[];
   canEdit: boolean;
@@ -122,10 +143,12 @@ function CostInstallmentTable({
   onUpdate: (id: string, input: CostInstallmentInput) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onLinkFreelancerInvoice?: (installmentId: string, invoiceId: string | null) => Promise<void>;
+  onUpdateStatus?: (id: string, status: "pending" | "paid") => Promise<void>;
 }) {
   const router = useRouter();
   const today = new Date().toISOString().slice(0, 10);
   const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const total = installments.reduce((s, i) => s + i.amount, 0);
   const paid = installments.filter((i) => i.status === "paid").reduce((s, i) => s + i.amount, 0);
@@ -146,6 +169,17 @@ function CostInstallmentTable({
     }
   }
 
+  async function handleToggleStatus(id: string, current: string) {
+    if (!onUpdateStatus) return;
+    setTogglingId(id);
+    try {
+      await onUpdateStatus(id, current === "paid" ? "pending" : "paid");
+      router.refresh();
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex gap-4 text-sm">
@@ -160,6 +194,7 @@ function CostInstallmentTable({
         <TableHeader>
           <TableRow>
             <TableHead>Etiqueta</TableHead>
+            <TableHead>Beneficiario</TableHead>
             <TableHead>Monto</TableHead>
             <TableHead>Vencimiento</TableHead>
             <TableHead>Estatus</TableHead>
@@ -181,6 +216,9 @@ function CostInstallmentTable({
                     </span>
                   )}
                 </TableCell>
+                <TableCell>
+                  <Badge variant="outline">{PAYEE_LABELS[inst.payee_type] ?? inst.payee_type}</Badge>
+                </TableCell>
                 <TableCell className="tabular-nums">{formatCurrency(inst.amount)}</TableCell>
                 <TableCell>
                   {inst.due_date
@@ -189,9 +227,29 @@ function CostInstallmentTable({
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
-                    <Badge variant={STATUS_VARIANT[inst.status] ?? "outline"}>
-                      {STATUS_LABELS[inst.status] ?? inst.status}
-                    </Badge>
+                    {canEdit && onUpdateStatus ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 gap-1 px-2 text-xs"
+                        disabled={togglingId === inst.id}
+                        onClick={() => handleToggleStatus(inst.id, inst.status)}
+                      >
+                        {inst.status === "paid" ? (
+                          <>
+                            <Undo2 className="size-3" /> Pagada
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="size-3" /> Pendiente
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <Badge variant={STATUS_VARIANT[inst.status] ?? "outline"}>
+                        {STATUS_LABELS[inst.status] ?? inst.status}
+                      </Badge>
+                    )}
                     {isOverdue && <Badge variant="destructive">Vencida</Badge>}
                   </div>
                 </TableCell>
@@ -282,6 +340,7 @@ export function CostSchedulePanel({
   onDeleteAll,
   onGenerateSchedule,
   onLinkFreelancerInvoice,
+  onUpdateStatus,
 }: {
   financials: ProjectFinancials | null;
   costInstallments: ProjectCostInstallmentWithRelations[];
@@ -294,6 +353,7 @@ export function CostSchedulePanel({
   onDeleteAll: () => Promise<void>;
   onGenerateSchedule: () => Promise<void>;
   onLinkFreelancerInvoice?: (installmentId: string, invoiceId: string | null) => Promise<void>;
+  onUpdateStatus?: (id: string, status: "pending" | "paid") => Promise<void>;
 }) {
   const router = useRouter();
   const [costTab, setCostTab] = useState<"freelancer" | "employee">("freelancer");
@@ -302,9 +362,6 @@ export function CostSchedulePanel({
   const [error, setError] = useState<string | null>(null);
 
   const costType = financials?.cost_payment_type ?? null;
-  const directCost = financials?.direct_cost ?? 0;
-  const budgetSold = financials?.budget_sold || 1;
-  const ratioPct = Math.round((directCost / budgetSold) * 100 * 10) / 10;
 
   async function handleSetType(type: string) {
     await onSetCostPaymentType(type);
@@ -382,8 +439,7 @@ export function CostSchedulePanel({
           !costType ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                ¿Cuándo se paga al freelancer? El costo directo es{" "}
-                <strong>{formatCurrency(directCost)}</strong> ({ratioPct}% del precio base).
+                ¿Cómo se calculará el pago al freelancer?
               </p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <button
@@ -398,7 +454,7 @@ export function CostSchedulePanel({
                     Espejo de cobranza
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Cuotas proporcionales al plan de cobro del cliente ({ratioPct}% c/u).
+                    Cuotas proporcionales al plan de cobro del cliente.
                   </p>
                 </button>
                 <button
@@ -421,7 +477,7 @@ export function CostSchedulePanel({
           ) : costType === "with_collection" && costInstallments.length === 0 ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
-                Se espejará el plan de cobro con proporción {ratioPct}% (costo / precio base).
+                Se generará una cuota de costo por cada cuota del plan de cobro del cliente.
               </p>
               {error && <p className="text-sm text-destructive">{error}</p>}
               {canEdit && (
@@ -432,10 +488,7 @@ export function CostSchedulePanel({
             </div>
           ) : costType === "with_collection" ? (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Proporción: <strong className="text-foreground">{ratioPct}%</strong> del cobro
-                </p>
+              <div className="flex items-center justify-end">
                 {canEdit && (
                   <Button variant="outline" size="sm" disabled={deletingAll} onClick={handleDeleteAll}>
                     <RotateCcw className="size-4" />
@@ -450,6 +503,7 @@ export function CostSchedulePanel({
                 onUpdate={onUpdate}
                 onDelete={onDelete}
                 onLinkFreelancerInvoice={onLinkFreelancerInvoice}
+                onUpdateStatus={onUpdateStatus}
               />
             </div>
           ) : (
@@ -474,6 +528,7 @@ export function CostSchedulePanel({
                   onUpdate={onUpdate}
                   onDelete={onDelete}
                   onLinkFreelancerInvoice={onLinkFreelancerInvoice}
+                  onUpdateStatus={onUpdateStatus}
                 />
               )}
             </div>

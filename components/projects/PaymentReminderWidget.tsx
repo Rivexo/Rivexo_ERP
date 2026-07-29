@@ -11,9 +11,11 @@ const today = () => new Date().toISOString().slice(0, 10);
 export function PaymentReminderWidget({
   installments,
   projectId,
+  canAccessErp = false,
 }: {
   installments: Installment[];
   projectId: string;
+  canAccessErp?: boolean;
 }) {
   const now = today();
   const overdue = installments.filter((i) => i.due_date && i.due_date < now);
@@ -32,9 +34,11 @@ export function PaymentReminderWidget({
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">Recordatorio de pagos</CardTitle>
-        <Link href={`/projects/${projectId}/finances`} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-          Ver plan completo →
-        </Link>
+        {canAccessErp && (
+          <Link href={`/erp/projects/${projectId}`} className={buttonVariants({ variant: "ghost", size: "sm" })}>
+            Ver plan completo →
+          </Link>
+        )}
       </CardHeader>
       <CardContent className="space-y-3">
         {overdue.length > 0 && (

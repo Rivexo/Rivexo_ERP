@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { ProjectTabNav } from "@/components/projects/ProjectTabNav";
-import { canViewProjects, canViewProjectFinancials } from "@/lib/permissions";
+import { canViewProjects } from "@/lib/permissions";
 import { getCurrentProfile } from "@/services/profiles.service";
 import { getProject } from "@/services/projects.service";
 
@@ -27,8 +27,6 @@ export default async function ProjectLayout({
   const project = await getProject(id);
   if (!project) notFound();
 
-  const showFinances = !!profile && canViewProjectFinancials(profile.role);
-
   return (
     <div className="space-y-4">
       <div>
@@ -39,7 +37,7 @@ export default async function ProjectLayout({
         <p className="text-sm text-muted-foreground">{project.account?.name}</p>
       </div>
 
-      <ProjectTabNav projectId={id} showFinances={showFinances} />
+      <ProjectTabNav projectId={id} />
 
       <div className="pt-2">{children}</div>
     </div>

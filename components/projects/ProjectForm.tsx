@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { projectSchema, type ProjectFormValues, type ProjectInput } from "@/lib/validations/project";
 import type { Profile } from "@/services/profiles.service";
 import type { BusinessLine } from "@/services/business-lines.service";
-import type { ProjectFinancials, ProjectWithRelations } from "@/services/projects.service";
+import type { ProjectWithRelations } from "@/services/projects.service";
 
 const STATUS_OPTIONS = [
   { value: "planning", label: "Planeación" },
@@ -23,17 +23,13 @@ const STATUS_OPTIONS = [
 
 export function ProjectForm({
   project,
-  financials,
   businessLines,
   projectManagers,
-  canManageFinancials,
   onSubmit,
 }: {
   project: ProjectWithRelations;
-  financials: ProjectFinancials | null;
   businessLines: BusinessLine[];
   projectManagers: Profile[];
-  canManageFinancials: boolean;
   onSubmit: (input: ProjectInput) => Promise<void>;
 }) {
   const router = useRouter();
@@ -55,7 +51,6 @@ export function ProjectForm({
       due_date: project.due_date ?? "",
       status: project.status,
       progress_pct: project.progress_pct,
-      budget_sold: financials?.budget_sold ?? null,
     },
   });
 
@@ -152,13 +147,6 @@ export function ProjectForm({
           <Label htmlFor="due_date">Fecha de entrega</Label>
           <Input id="due_date" type="date" {...register("due_date")} />
         </div>
-
-        {canManageFinancials && (
-          <div className="space-y-2">
-            <Label htmlFor="budget_sold">Presupuesto vendido</Label>
-            <Input id="budget_sold" type="number" step="0.01" min={0} {...register("budget_sold")} />
-          </div>
-        )}
       </div>
 
       {serverError && <p className="text-sm text-destructive">{serverError}</p>}

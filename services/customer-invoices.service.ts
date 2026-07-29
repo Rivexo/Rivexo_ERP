@@ -120,6 +120,40 @@ export async function uploadInvoiceFiles(
   }
 }
 
+// Crea la factura de una exhibición del plan de cobro y la liga de una vez,
+// para que subir PDF/XML en la exhibición alimente facturas y CxC sin pasos
+// manuales extra. El monto de la cuota es pre-IVA (mismo criterio que
+// budget_sold), consistente con `subtotal` de customer_invoices.
+export async function createInvoiceFromInstallment(
+  installmentId: string,
+  projectId: string,
+  accountId: string,
+  createdBy: string,
+  amount: number,
+  dueDate: string | null,
+  pdfFile?: File | null,
+  xmlFile?: File | null,
+): Promise<string> {
+  const supabase = await createClient();
+
+  const invoiceId = await createCustomerInvoice(projectId, accountId, createdBy, {
+    issued_at: new Date().toISOString().slice(0, 10),
+    due_at: dueDate,
+    subtotal: amount,
+  });
+
+  await uploadInvoiceFiles(invoiceId, projectId, pdfFile, xmlFile);
+  await supabase.from("customer_invoices").update({ status: "emitida" }).eq("id", invoiceId);
+
+  const { error: linkError } = await supabase
+    .from("deal_payment_installments")
+    .update({ invoice_id: invoiceId, status: "invoiced" })
+    .eq("id", installmentId);
+  if (linkError) throw linkError;
+
+  return invoiceId;
+}
+
 export async function updateCustomerInvoiceStatus(id: string, status: InvoiceStatus): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase.from("customer_invoices").update({ status }).eq("id", id);

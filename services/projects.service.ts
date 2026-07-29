@@ -105,6 +105,14 @@ export async function updateProject(id: string, input: ProjectInput): Promise<vo
   }
 }
 
+export async function updateProjectBudget(projectId: string, budgetSold: number): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("project_financials")
+    .upsert({ project_id: projectId, budget_sold: budgetSold });
+  if (error) throw error;
+}
+
 export async function updateProjectPaymentConfig(
   projectId: string,
   config: {

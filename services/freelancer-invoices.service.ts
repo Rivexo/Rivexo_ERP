@@ -107,7 +107,7 @@ export async function getAccountsPayable(): Promise<AccountsPayableRow[]> {
       .eq("status", "pending"),
     supabase
       .from("project_cost_installments")
-      .select("id, label, amount, due_date, project:projects(name)")
+      .select("id, label, amount, due_date, freelancer_invoice_id, project:projects(name)")
       .eq("status", "pending"),
   ]);
 
@@ -115,9 +115,26 @@ export async function getAccountsPayable(): Promise<AccountsPayableRow[]> {
   if (costResult.error) throw costResult.error;
 
   type InvoiceRow = { id: string; freelancer_name: string; amount: number; due_date: string | null; project: { name: string } | null };
-  type CostRow = { id: string; label: string; amount: number; due_date: string | null; project: { name: string } | null };
+  type CostRow = {
+    id: string;
+    label: string;
+    amount: number;
+    due_date: string | null;
+    freelancer_invoice_id: string | null;
+    project: { name: string } | null;
+  };
 
-  const invoiceRows: AccountsPayableRow[] = (invoicesResult.data as unknown as InvoiceRow[]).map((row) => ({
+  // Una cuota de costo ligada a una factura de freelancer representa el mismo
+  // monto pendiente; si se cuentan las dos se duplica en CxP.
+  const linkedInvoiceIds = new Set(
+    (costResult.data as unknown as CostRow[])
+      .map((row) => row.freelancer_invoice_id)
+      .filter((id): id is string => id != null),
+  );
+
+  const invoiceRows: AccountsPayableRow[] = (invoicesResult.data as unknown as InvoiceRow[])
+    .filter((row) => !linkedInvoiceIds.has(row.id))
+    .map((row) => ({
     id: row.id,
     source: "freelancer_invoice",
     description: row.freelancer_name,

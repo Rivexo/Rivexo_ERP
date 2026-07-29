@@ -273,8 +273,12 @@ async function refreshInvoiceStatus(
 
   const totalApplied = (payments ?? []).reduce((s, p) => s + p.amount_applied, 0);
 
+  // `total` is a generated column (subtotal * (1 + iva_rate)) and both inputs
+  // are not-null, so it's never actually null here despite the nullable type.
+  const invoiceTotal = invoice.total ?? 0;
+
   let status: InvoiceStatus;
-  if (totalApplied >= invoice.total) {
+  if (totalApplied >= invoiceTotal) {
     status = "pagada";
   } else if (totalApplied > 0) {
     status = "parcialmente_pagada";

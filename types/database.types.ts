@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -318,7 +313,7 @@ export type Database = {
           folio: string | null
           id: string
           issued_at: string
-          iva_amount: number
+          iva_amount: number | null
           iva_rate: number
           notes: string | null
           pdf_path: string | null
@@ -326,7 +321,7 @@ export type Database = {
           serie: string | null
           status: Database["public"]["Enums"]["invoice_status"]
           subtotal: number
-          total: number
+          total: number | null
           updated_at: string
           uuid_fiscal: string | null
           xml_path: string | null
@@ -339,6 +334,7 @@ export type Database = {
           folio?: string | null
           id?: string
           issued_at?: string
+          iva_amount?: number | null
           iva_rate?: number
           notes?: string | null
           pdf_path?: string | null
@@ -346,6 +342,7 @@ export type Database = {
           serie?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal: number
+          total?: number | null
           updated_at?: string
           uuid_fiscal?: string | null
           xml_path?: string | null
@@ -358,6 +355,7 @@ export type Database = {
           folio?: string | null
           id?: string
           issued_at?: string
+          iva_amount?: number | null
           iva_rate?: number
           notes?: string | null
           pdf_path?: string | null
@@ -365,6 +363,7 @@ export type Database = {
           serie?: string | null
           status?: Database["public"]["Enums"]["invoice_status"]
           subtotal?: number
+          total?: number | null
           updated_at?: string
           uuid_fiscal?: string | null
           xml_path?: string | null
@@ -375,6 +374,13 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_invoices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -392,10 +398,10 @@ export type Database = {
           amount: number
           bank_account: string | null
           bank_reference: string | null
-          created_at: string
-          created_by: string | null
           complement_pdf_path: string | null
           complement_xml_path: string | null
+          created_at: string
+          created_by: string | null
           id: string
           notes: string | null
           paid_at: string
@@ -450,6 +456,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "customer_payments_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "customer_payments_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -501,9 +514,12 @@ export type Database = {
           deal_id: string
           due_date: string | null
           id: string
+          interest_amount: number | null
           invoice_id: string | null
           label: string
           paid_at: string | null
+          percentage: number | null
+          principal_amount: number | null
           project_id: string | null
           status: Database["public"]["Enums"]["installment_status"]
           updated_at: string
@@ -514,9 +530,12 @@ export type Database = {
           deal_id: string
           due_date?: string | null
           id?: string
+          interest_amount?: number | null
           invoice_id?: string | null
           label: string
           paid_at?: string | null
+          percentage?: number | null
+          principal_amount?: number | null
           project_id?: string | null
           status?: Database["public"]["Enums"]["installment_status"]
           updated_at?: string
@@ -527,9 +546,12 @@ export type Database = {
           deal_id?: string
           due_date?: string | null
           id?: string
+          interest_amount?: number | null
           invoice_id?: string | null
           label?: string
           paid_at?: string | null
+          percentage?: number | null
+          principal_amount?: number | null
           project_id?: string | null
           status?: Database["public"]["Enums"]["installment_status"]
           updated_at?: string
@@ -547,6 +569,20 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_payment_installments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "customer_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_payment_installments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -688,6 +724,47 @@ export type Database = {
           },
         ]
       }
+      employees: {
+        Row: {
+          active: boolean
+          created_at: string
+          full_name: string
+          id: string
+          monthly_salary: number
+          payroll_day: number
+          profile_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          full_name: string
+          id?: string
+          monthly_salary: number
+          payroll_day?: number
+          profile_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          full_name?: string
+          id?: string
+          monthly_salary?: number
+          payroll_day?: number
+          profile_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_categories: {
         Row: {
           created_at: string
@@ -810,6 +887,13 @@ export type Database = {
             referencedRelation: "fixed_costs"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "fixed_cost_periods_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
         ]
       }
       fixed_costs: {
@@ -912,6 +996,27 @@ export type Database = {
           },
         ]
       }
+      ideas_phases: {
+        Row: {
+          code: string
+          id: string
+          name: string
+          order_index: number
+        }
+        Insert: {
+          code: string
+          id?: string
+          name: string
+          order_index: number
+        }
+        Update: {
+          code?: string
+          id?: string
+          name?: string
+          order_index?: number
+        }
+        Relationships: []
+      }
       invoice_payments: {
         Row: {
           amount_applied: number
@@ -947,27 +1052,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      ideas_phases: {
-        Row: {
-          code: string
-          id: string
-          name: string
-          order_index: number
-        }
-        Insert: {
-          code: string
-          id?: string
-          name: string
-          order_index: number
-        }
-        Update: {
-          code?: string
-          id?: string
-          name?: string
-          order_index?: number
-        }
-        Relationships: []
       }
       journal_entries: {
         Row: {
@@ -1150,6 +1234,48 @@ export type Database = {
           },
         ]
       }
+      payroll_accruals: {
+        Row: {
+          amount: number
+          created_at: string
+          employee_id: string
+          id: string
+          journal_entry_id: string | null
+          period: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          employee_id: string
+          id?: string
+          journal_entry_id?: string | null
+          period: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          employee_id?: string
+          id?: string
+          journal_entry_id?: string | null
+          period?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_accruals_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payroll_accruals_journal_entry_id_fkey"
+            columns: ["journal_entry_id"]
+            isOneToOne: false
+            referencedRelation: "journal_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_stages: {
         Row: {
           color: string | null
@@ -1219,6 +1345,103 @@ export type Database = {
         }
         Relationships: []
       }
+      project_cost_installments: {
+        Row: {
+          amount: number
+          collection_installment_id: string | null
+          created_at: string
+          deal_id: string
+          due_date: string | null
+          employee_id: string | null
+          freelancer_invoice_id: string | null
+          id: string
+          label: string
+          notes: string | null
+          paid_at: string | null
+          payee_type: string
+          project_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          collection_installment_id?: string | null
+          created_at?: string
+          deal_id: string
+          due_date?: string | null
+          employee_id?: string | null
+          freelancer_invoice_id?: string | null
+          id?: string
+          label: string
+          notes?: string | null
+          paid_at?: string | null
+          payee_type?: string
+          project_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          collection_installment_id?: string | null
+          created_at?: string
+          deal_id?: string
+          due_date?: string | null
+          employee_id?: string | null
+          freelancer_invoice_id?: string | null
+          id?: string
+          label?: string
+          notes?: string | null
+          paid_at?: string | null
+          payee_type?: string
+          project_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_cost_installments_collection_installment_id_fkey"
+            columns: ["collection_installment_id"]
+            isOneToOne: false
+            referencedRelation: "deal_payment_installments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_cost_installments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deal_financials_view"
+            referencedColumns: ["deal_id"]
+          },
+          {
+            foreignKeyName: "project_cost_installments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_cost_installments_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_cost_installments_freelancer_invoice_id_fkey"
+            columns: ["freelancer_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "freelancer_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_cost_installments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_decisions: {
         Row: {
           created_at: string
@@ -1270,6 +1493,7 @@ export type Database = {
       project_financials: {
         Row: {
           budget_sold: number
+          cost_payment_type: string | null
           created_at: string
           credit_start_date: string | null
           direct_cost: number
@@ -1277,7 +1501,6 @@ export type Database = {
           financed_total: number | null
           financing_term_months: number | null
           interest_rate_annual: number | null
-          cost_payment_type: string | null
           is_financed: boolean
           iva_rate: number
           payment_type: string | null
@@ -1321,83 +1544,6 @@ export type Database = {
             foreignKeyName: "project_financials_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: true
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      project_cost_installments: {
-        Row: {
-          amount: number
-          collection_installment_id: string | null
-          created_at: string
-          deal_id: string
-          due_date: string | null
-          freelancer_invoice_id: string | null
-          id: string
-          label: string
-          notes: string | null
-          paid_at: string | null
-          project_id: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          amount: number
-          collection_installment_id?: string | null
-          created_at?: string
-          deal_id: string
-          due_date?: string | null
-          freelancer_invoice_id?: string | null
-          id?: string
-          label: string
-          notes?: string | null
-          paid_at?: string | null
-          project_id: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          collection_installment_id?: string | null
-          created_at?: string
-          deal_id?: string
-          due_date?: string | null
-          freelancer_invoice_id?: string | null
-          id?: string
-          label?: string
-          notes?: string | null
-          paid_at?: string | null
-          project_id?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_cost_installments_collection_installment_id_fkey"
-            columns: ["collection_installment_id"]
-            isOneToOne: false
-            referencedRelation: "deal_payment_installments"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_cost_installments_deal_id_fkey"
-            columns: ["deal_id"]
-            isOneToOne: false
-            referencedRelation: "deals"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_cost_installments_freelancer_invoice_id_fkey"
-            columns: ["freelancer_invoice_id"]
-            isOneToOne: false
-            referencedRelation: "freelancer_invoices"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "project_cost_installments_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
@@ -1920,6 +2066,77 @@ export type Database = {
           },
         ]
       }
+      time_allocations: {
+        Row: {
+          allocation_pct: number | null
+          created_at: string
+          effective_from: string
+          effective_to: string | null
+          employee_id: string | null
+          hours_per_month: number | null
+          id: string
+          notes: string | null
+          profile_id: string
+          project_id: string | null
+          subscription_id: string | null
+        }
+        Insert: {
+          allocation_pct?: number | null
+          created_at?: string
+          effective_from: string
+          effective_to?: string | null
+          employee_id?: string | null
+          hours_per_month?: number | null
+          id?: string
+          notes?: string | null
+          profile_id: string
+          project_id?: string | null
+          subscription_id?: string | null
+        }
+        Update: {
+          allocation_pct?: number | null
+          created_at?: string
+          effective_from?: string
+          effective_to?: string | null
+          employee_id?: string | null
+          hours_per_month?: number | null
+          id?: string
+          notes?: string | null
+          profile_id?: string
+          project_id?: string | null
+          subscription_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_allocations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_allocations_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_allocations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "time_allocations_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "monthly_support_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       variable_expenses: {
         Row: {
           amount: number
@@ -1973,64 +2190,6 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      time_allocations: {
-        Row: {
-          created_at: string
-          effective_from: string
-          effective_to: string | null
-          hours_per_month: number
-          id: string
-          notes: string | null
-          profile_id: string
-          project_id: string | null
-          subscription_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          effective_from: string
-          effective_to?: string | null
-          hours_per_month: number
-          id?: string
-          notes?: string | null
-          profile_id: string
-          project_id?: string | null
-          subscription_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          effective_from?: string
-          effective_to?: string | null
-          hours_per_month?: number
-          id?: string
-          notes?: string | null
-          profile_id?: string
-          project_id?: string | null
-          subscription_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "time_allocations_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "time_allocations_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "time_allocations_subscription_id_fkey"
-            columns: ["subscription_id"]
-            isOneToOne: false
-            referencedRelation: "monthly_support_subscriptions"
             referencedColumns: ["id"]
           },
         ]
@@ -2107,10 +2266,10 @@ export type Database = {
       }
       v_pipeline_summary: {
         Row: {
-          tcv_real: number | null
-          tcv_potencial: number | null
-          margin_real: number | null
           margin_potencial: number | null
+          margin_real: number | null
+          tcv_potencial: number | null
+          tcv_real: number | null
         }
         Relationships: []
       }
@@ -2135,14 +2294,22 @@ export type Database = {
       account_status: "lead" | "prospect" | "customer" | "inactive"
       account_type: "asset" | "liability" | "equity" | "revenue" | "expense"
       company_size: "micro" | "small" | "medium" | "large"
+      cost_conciliation_status:
+        | "sin_comprobante"
+        | "con_comprobante"
+        | "conciliado"
       cost_frequency: "monthly" | "annual" | "one_time"
       decision_impact: "low" | "medium" | "high"
       expense_category_kind: "fixed" | "variable"
       freelancer_invoice_status: "pending" | "paid"
-      cost_conciliation_status: "sin_comprobante" | "con_comprobante" | "conciliado"
-      installment_status: "pending" | "invoiced" | "partially_paid" | "paid"
-      invoice_status: "borrador" | "emitida" | "parcialmente_pagada" | "pagada" | "cancelada" | "vencida"
-      reconciliation_status: "pendiente" | "conciliado" | "diferencia" | "rechazado"
+      installment_status: "pending" | "invoiced" | "paid" | "partially_paid"
+      invoice_status:
+        | "borrador"
+        | "emitida"
+        | "parcialmente_pagada"
+        | "pagada"
+        | "cancelada"
+        | "vencida"
       payment_method:
         | "transferencia"
         | "tarjeta"
@@ -2155,6 +2322,11 @@ export type Database = {
         | "on_hold"
         | "completed"
         | "cancelled"
+      reconciliation_status:
+        | "pendiente"
+        | "conciliado"
+        | "diferencia"
+        | "rechazado"
       revenue_kind: "principal" | "interest"
       risk_level: "low" | "medium" | "high"
       risk_status: "open" | "mitigated" | "closed"
@@ -2306,11 +2478,24 @@ export const Constants = {
       account_status: ["lead", "prospect", "customer", "inactive"],
       account_type: ["asset", "liability", "equity", "revenue", "expense"],
       company_size: ["micro", "small", "medium", "large"],
+      cost_conciliation_status: [
+        "sin_comprobante",
+        "con_comprobante",
+        "conciliado",
+      ],
       cost_frequency: ["monthly", "annual", "one_time"],
       decision_impact: ["low", "medium", "high"],
       expense_category_kind: ["fixed", "variable"],
       freelancer_invoice_status: ["pending", "paid"],
-      installment_status: ["pending", "invoiced", "paid"],
+      installment_status: ["pending", "invoiced", "paid", "partially_paid"],
+      invoice_status: [
+        "borrador",
+        "emitida",
+        "parcialmente_pagada",
+        "pagada",
+        "cancelada",
+        "vencida",
+      ],
       payment_method: [
         "transferencia",
         "tarjeta",
@@ -2324,6 +2509,12 @@ export const Constants = {
         "on_hold",
         "completed",
         "cancelled",
+      ],
+      reconciliation_status: [
+        "pendiente",
+        "conciliado",
+        "diferencia",
+        "rechazado",
       ],
       revenue_kind: ["principal", "interest"],
       risk_level: ["low", "medium", "high"],
@@ -2347,3 +2538,4 @@ export const Constants = {
     },
   },
 } as const
+

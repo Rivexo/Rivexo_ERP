@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 import type { CostInstallmentInput } from "@/lib/validations/cost-installment";
+import { postJournalEntry } from "@/services/accounting.service";
 
 export type ProjectCostInstallment = Database["public"]["Tables"]["project_cost_installments"]["Row"];
 
@@ -100,6 +101,38 @@ export async function generateCostScheduleFromCollection(projectId: string, deal
 
   const { error } = await supabase.from("project_cost_installments").insert(rows);
   if (error) throw error;
+}
+
+export async function updateCostInstallmentStatus(id: string, status: "pending" | "paid"): Promise<void> {
+  const supabase = await createClient();
+  const { data: current, error: currentError } = await supabase
+    .from("project_cost_installments")
+    .select("amount, status, label, payee_type")
+    .eq("id", id)
+    .single();
+  if (currentError) throw currentError;
+
+  const { error } = await supabase
+    .from("project_cost_installments")
+    .update({ status, paid_at: status === "paid" ? new Date().toISOString().slice(0, 10) : null })
+    .eq("id", id);
+  if (error) throw error;
+
+  if (current.status === status) return;
+
+  const expenseAccountCode = current.payee_type === "employee" ? "5600" : "5500";
+  const today = new Date().toISOString().slice(0, 10);
+  if (status === "paid") {
+    await postJournalEntry(today, `Pago a proveedor: ${current.label}`, "cost_installment_payment", id, [
+      { accountCode: expenseAccountCode, debit: current.amount },
+      { accountCode: "1100", credit: current.amount },
+    ]);
+  } else {
+    await postJournalEntry(today, `Reversión de pago: ${current.label}`, "cost_installment_payment_reversal", id, [
+      { accountCode: "1100", debit: current.amount },
+      { accountCode: expenseAccountCode, credit: current.amount },
+    ]);
+  }
 }
 
 export async function linkFreelancerInvoiceToCostInstallment(

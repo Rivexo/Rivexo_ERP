@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 import type { RevenueInput } from "@/lib/validations/revenue";
-import { postJournalEntry } from "@/services/accounting.service";
+import { postJournalEntry, type JournalLineInput } from "@/services/accounting.service";
+import { getCurrentPhaseByProject } from "@/services/ideas.service";
 
 export type Revenue = Database["public"]["Tables"]["revenues"]["Row"];
 export type DealPaymentInstallment = Database["public"]["Tables"]["deal_payment_installments"]["Row"];
@@ -79,10 +80,16 @@ export async function getRevenueForecast(): Promise<ForecastSummary> {
   if (installmentsResult.error) throw installmentsResult.error;
   if (subscriptionsResult.error) throw subscriptionsResult.error;
 
+  const subscribedProjectIds = (subscriptionsResult.data ?? [])
+    .filter((s) => s.project_id)
+    .map((s) => s.project_id as string);
+
+  // El soporte de un proyecto solo cuenta como forecast de "soporte" cuando el
+  // proyecto ya está en la etapa S (Soporte) de IDEAS; antes de eso, aunque
+  // exista la suscripción, sigue siendo forecast de proyecto (deployment).
+  const currentPhaseByProject = await getCurrentPhaseByProject(subscribedProjectIds);
   const supportProjectIds = new Set(
-    (subscriptionsResult.data ?? [])
-      .filter((s) => s.project_id)
-      .map((s) => s.project_id as string),
+    subscribedProjectIds.filter((id) => currentPhaseByProject.get(id) === "S"),
   );
 
   const thisMonthStart = today.slice(0, 7) + "-01";
@@ -104,7 +111,7 @@ export async function getRevenueForecast(): Promise<ForecastSummary> {
   };
 
   const wonRows = (installmentsResult.data as unknown as Raw[])
-    .filter((r) => r.deal?.stage?.is_won === true)
+    .filter((r) => r.project_id != null || r.deal?.stage?.is_won === true)
     .map((r) => ({
       id: r.id,
       deal_id: r.deal_id,
@@ -209,7 +216,16 @@ export async function createRevenue(input: RevenueInput): Promise<void> {
   const { data, error } = await supabase.from("revenues").insert(input).select("id").single();
   if (error) throw error;
 
+  let installmentBreakdown: { principal_amount: number | null; interest_amount: number | null } | null = null;
   if (input.related_installment_id) {
+    const { data: installment, error: installmentFetchError } = await supabase
+      .from("deal_payment_installments")
+      .select("principal_amount, interest_amount")
+      .eq("id", input.related_installment_id)
+      .single();
+    if (installmentFetchError) throw installmentFetchError;
+    installmentBreakdown = installment;
+
     const { error: installmentError } = await supabase
       .from("deal_payment_installments")
       .update({ status: "paid", paid_at: new Date().toISOString() })
@@ -217,11 +233,22 @@ export async function createRevenue(input: RevenueInput): Promise<void> {
     if (installmentError) throw installmentError;
   }
 
-  const revenueAccountCode = input.kind === "interest" ? "4300" : "4100";
-  await postJournalEntry(input.received_at, `Cobro de ingreso (${input.kind})`, "revenue", data.id, [
-    { accountCode: "1100", debit: input.amount },
-    { accountCode: revenueAccountCode, credit: input.amount },
-  ]);
+  // Si la cuota cobrada trae desglose de amortización (financiamiento), el
+  // asiento se divide en capital (4100) e interés (4300); si no, se postea
+  // completo a la cuenta que indique `kind`.
+  if (installmentBreakdown?.interest_amount) {
+    const principalPart = installmentBreakdown.principal_amount ?? input.amount - installmentBreakdown.interest_amount;
+    const lines: JournalLineInput[] = [{ accountCode: "1100", debit: input.amount }];
+    if (principalPart > 0) lines.push({ accountCode: "4100", credit: principalPart });
+    lines.push({ accountCode: "4300", credit: installmentBreakdown.interest_amount });
+    await postJournalEntry(input.received_at, "Cobro de ingreso (financiamiento: capital + interés)", "revenue", data.id, lines);
+  } else {
+    const revenueAccountCode = input.kind === "interest" ? "4300" : "4100";
+    await postJournalEntry(input.received_at, `Cobro de ingreso (${input.kind})`, "revenue", data.id, [
+      { accountCode: "1100", debit: input.amount },
+      { accountCode: revenueAccountCode, credit: input.amount },
+    ]);
+  }
 }
 
 export async function updateRevenue(id: string, input: RevenueInput): Promise<void> {

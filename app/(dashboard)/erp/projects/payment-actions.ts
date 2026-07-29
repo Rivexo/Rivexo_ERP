@@ -1,22 +1,33 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
 import { installmentSchema, type InstallmentInput } from "@/lib/validations/installment";
 import { financingConfigSchema, type FinancingConfigInput } from "@/lib/validations/project-payment";
+import { milestonePlanSchema, type MilestonePlanInput } from "@/lib/validations/milestone-plan";
 import {
   createInstallmentForProject,
   updateInstallment,
   deleteInstallment,
   deleteAllInstallmentsByDeal,
   generateProjectFinancingSchedule,
+  generateMilestoneSchedule,
   linkInvoiceToInstallment,
 } from "@/services/installments.service";
-import { updateProjectPaymentConfig } from "@/services/projects.service";
+import { createInvoiceFromInstallment } from "@/services/customer-invoices.service";
+import { updateProjectPaymentConfig, updateProjectBudget, getProject } from "@/services/projects.service";
 
 function revalidate(projectId: string) {
   revalidatePath(`/projects/${projectId}`);
-  revalidatePath(`/projects/${projectId}/finances`);
+  revalidatePath(`/erp/projects/${projectId}`);
+  revalidatePath("/erp/projects");
   revalidatePath("/erp/revenues");
+  revalidatePath("/erp/accounting/receivables");
+}
+
+export async function updateProjectBudgetAction(projectId: string, budgetSold: number): Promise<void> {
+  await updateProjectBudget(projectId, budgetSold);
+  revalidate(projectId);
 }
 
 export async function setPaymentTypeAction(
@@ -81,4 +92,47 @@ export async function linkInstallmentToInvoiceAction(
 ): Promise<void> {
   await linkInvoiceToInstallment(installmentId, invoiceId);
   revalidate(projectId);
+}
+
+export async function generateMilestoneScheduleAction(
+  projectId: string,
+  dealId: string,
+  plan: MilestonePlanInput,
+): Promise<void> {
+  const parsed = milestonePlanSchema.parse(plan);
+  await updateProjectPaymentConfig(projectId, { payment_type: "milestones" });
+  await generateMilestoneSchedule(projectId, dealId, parsed.exhibitions);
+  revalidate(projectId);
+}
+
+export async function uploadInstallmentInvoiceAction(
+  projectId: string,
+  installmentId: string,
+  amount: number,
+  dueDate: string | null,
+  formData: FormData,
+): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+
+  const project = await getProject(projectId);
+  if (!project?.account?.id) throw new Error("El proyecto no tiene cuenta asociada");
+
+  const pdf = formData.get("pdf");
+  const xml = formData.get("xml");
+  await createInvoiceFromInstallment(
+    installmentId,
+    projectId,
+    project.account.id,
+    user.id,
+    amount,
+    dueDate,
+    pdf instanceof File ? pdf : null,
+    xml instanceof File ? xml : null,
+  );
+  revalidate(projectId);
+  revalidatePath("/erp/accounting/receivables");
 }

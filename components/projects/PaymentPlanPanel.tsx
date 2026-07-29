@@ -1,13 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { CalendarClock, Link, Link2Off, ListChecks, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import {
+  CalendarClock,
+  FileUp,
+  Link,
+  Link2Off,
+  ListChecks,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Trash2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,6 +39,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { PaymentScheduleDialog } from "@/components/crm/PaymentScheduleDialog";
 import { cn, formatCurrency } from "@/lib/utils";
 import { financingConfigSchema, type FinancingConfigFormValues, type FinancingConfigInput } from "@/lib/validations/project-payment";
+import type { MilestonePlanInput } from "@/lib/validations/milestone-plan";
 import type { InstallmentInput } from "@/lib/validations/installment";
 import type { Installment } from "@/services/installments.service";
 import type { CustomerInvoiceWithRelations } from "@/services/customer-invoices.service";
@@ -158,6 +177,208 @@ function FinancingForm({
   );
 }
 
+type ExhibitionDraft = { label: string; percentage: string; due_date: string };
+
+function MilestoneGeneratorDialog({
+  budgetSold,
+  onGenerate,
+}: {
+  budgetSold: number;
+  onGenerate: (plan: MilestonePlanInput) => Promise<void>;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [rows, setRows] = useState<ExhibitionDraft[]>([
+    { label: "Anticipo", percentage: "60", due_date: "" },
+    { label: "Entrega", percentage: "20", due_date: "" },
+    { label: "Cierre", percentage: "20", due_date: "" },
+  ]);
+
+  const totalPct = rows.reduce((s, r) => s + (Number(r.percentage) || 0), 0);
+
+  function updateRow(i: number, patch: Partial<ExhibitionDraft>) {
+    setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+
+  function addRow() {
+    setRows((prev) => [...prev, { label: "", percentage: "", due_date: "" }]);
+  }
+
+  function removeRow(i: number) {
+    setRows((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await onGenerate({
+        exhibitions: rows.map((r) => ({
+          label: r.label,
+          percentage: Number(r.percentage),
+          due_date: r.due_date,
+        })),
+      });
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ocurrió un error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger
+        render={
+          <Button size="sm">
+            <Plus className="size-4" /> Generar exhibiciones
+          </Button>
+        }
+      />
+      <DialogContent className="max-w-xl">
+        <DialogHeader>
+          <DialogTitle>Generar exhibiciones</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <div className="space-y-2">
+            {rows.map((row, i) => {
+              const amount = ((Number(row.percentage) || 0) / 100) * budgetSold;
+              return (
+                <div key={i} className="grid grid-cols-[1fr_5rem_8rem_auto] items-end gap-2">
+                  <div className="space-y-1">
+                    {i === 0 && <Label className="text-xs">Etiqueta</Label>}
+                    <Input
+                      value={row.label}
+                      onChange={(e) => updateRow(i, { label: e.target.value })}
+                      placeholder="Anticipo"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    {i === 0 && <Label className="text-xs">%</Label>}
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min={0}
+                      max={100}
+                      value={row.percentage}
+                      onChange={(e) => updateRow(i, { percentage: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    {i === 0 && <Label className="text-xs">Fecha</Label>}
+                    <Input
+                      type="date"
+                      value={row.due_date}
+                      onChange={(e) => updateRow(i, { due_date: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    disabled={rows.length <= 1}
+                    onClick={() => removeRow(i)}
+                    aria-label="Quitar exhibición"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                  <p className="col-span-3 -mt-1 text-xs text-muted-foreground">
+                    = {formatCurrency(amount)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={addRow}>
+            <Plus className="size-4" /> Agregar exhibición
+          </Button>
+          <p className={cn("text-sm", Math.abs(totalPct - 100) < 0.01 ? "text-muted-foreground" : "text-destructive")}>
+            Total: {totalPct.toFixed(1)}% {Math.abs(totalPct - 100) >= 0.01 && "(debe sumar 100%)"}
+          </p>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting || Math.abs(totalPct - 100) >= 0.01}>
+              {isSubmitting ? "Generando..." : "Generar"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function UploadInstallmentInvoiceDialog({
+  installment,
+  trigger,
+  onUpload,
+}: {
+  installment: Installment;
+  trigger: React.ReactNode;
+  onUpload: (installmentId: string, amount: number, dueDate: string | null, formData: FormData) => Promise<void>;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const formData = new FormData(formRef.current!);
+    setIsSubmitting(true);
+    try {
+      await onUpload(installment.id, installment.amount, installment.due_date, formData);
+      formRef.current?.reset();
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ocurrió un error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={trigger as React.ReactElement} />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Factura de la exhibición: {installment.label}</DialogTitle>
+        </DialogHeader>
+        <form ref={formRef} onSubmit={submit} className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Al subir el PDF y XML se crea automáticamente la factura ({formatCurrency(installment.amount)}) y la
+            cuota queda facturada, alimentando cuentas por cobrar.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="milestone-pdf">PDF</Label>
+            <Input id="milestone-pdf" name="pdf" type="file" accept="application/pdf" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="milestone-xml">XML (CFDI)</Label>
+            <Input id="milestone-xml" name="xml" type="file" accept=".xml,text/xml,application/xml" />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Subiendo..." : "Subir y facturar"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function InstallmentTable({
   installments,
   canEdit,
@@ -166,6 +387,9 @@ function InstallmentTable({
   onUpdate,
   onDelete,
   onLinkInvoice,
+  onUploadInvoice,
+  showAmortization,
+  financingPrincipal,
 }: {
   installments: Installment[];
   canEdit: boolean;
@@ -174,14 +398,30 @@ function InstallmentTable({
   onUpdate: (id: string, input: InstallmentInput) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onLinkInvoice?: (installmentId: string, invoiceId: string | null) => Promise<void>;
+  onUploadInvoice?: (installmentId: string, amount: number, dueDate: string | null, formData: FormData) => Promise<void>;
+  showAmortization?: boolean;
+  financingPrincipal?: number;
 }) {
   const router = useRouter();
   const today = new Date().toISOString().slice(0, 10);
   const [linkingId, setLinkingId] = useState<string | null>(null);
-  const showPct = !!budgetSold && budgetSold > 0;
+  const showPct = !showAmortization && !!budgetSold && budgetSold > 0;
 
   const total = installments.reduce((s, i) => s + i.amount, 0);
   const paid = installments.filter((i) => i.status === "paid").reduce((s, i) => s + i.amount, 0);
+
+  // Saldo insoluto acumulado tras cada mensualidad (el enganche no reduce
+  // principal financiado: ya se descontó antes de calcular la corrida).
+  let runningBalance = financingPrincipal ?? 0;
+  const balances = new Map<string, number>();
+  if (showAmortization) {
+    for (const inst of installments) {
+      if (inst.principal_amount != null && inst.label !== "Enganche") {
+        runningBalance = Math.round((runningBalance - inst.principal_amount) * 100) / 100;
+      }
+      balances.set(inst.id, runningBalance);
+    }
+  }
 
   async function handleDelete(id: string) {
     await onDelete(id);
@@ -214,7 +454,14 @@ function InstallmentTable({
           <TableRow>
             <TableHead>Etiqueta</TableHead>
             {showPct && <TableHead>%</TableHead>}
+            {showAmortization && (
+              <>
+                <TableHead>Capital</TableHead>
+                <TableHead>Interés</TableHead>
+              </>
+            )}
             <TableHead>Monto</TableHead>
+            {showAmortization && <TableHead>Saldo</TableHead>}
             <TableHead>Vencimiento</TableHead>
             <TableHead>Estatus</TableHead>
             <TableHead>Factura CFDI</TableHead>
@@ -236,7 +483,22 @@ function InstallmentTable({
                     {((inst.amount / budgetSold!) * 100).toFixed(1)}%
                   </TableCell>
                 )}
+                {showAmortization && (
+                  <>
+                    <TableCell className="tabular-nums text-muted-foreground">
+                      {inst.principal_amount != null ? formatCurrency(inst.principal_amount) : "—"}
+                    </TableCell>
+                    <TableCell className="tabular-nums text-muted-foreground">
+                      {inst.interest_amount ? formatCurrency(inst.interest_amount) : "—"}
+                    </TableCell>
+                  </>
+                )}
                 <TableCell className="tabular-nums">{formatCurrency(inst.amount)}</TableCell>
+                {showAmortization && (
+                  <TableCell className="tabular-nums text-muted-foreground">
+                    {formatCurrency(balances.get(inst.id) ?? 0)}
+                  </TableCell>
+                )}
                 <TableCell>
                   {inst.due_date
                     ? new Date(`${inst.due_date}T00:00:00`).toLocaleDateString("es-MX")
@@ -267,6 +529,36 @@ function InstallmentTable({
                         >
                           <Link2Off className="size-3" />
                         </Button>
+                      )}
+                    </div>
+                  ) : canEdit && onUploadInvoice ? (
+                    <div className="flex items-center gap-1">
+                      <UploadInstallmentInvoiceDialog
+                        installment={inst}
+                        onUpload={onUploadInvoice}
+                        trigger={
+                          <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
+                            <FileUp className="size-3" /> Subir factura
+                          </Button>
+                        }
+                      />
+                      {onLinkInvoice && customerInvoices.length > 0 && (
+                        <Select
+                          value=""
+                          onValueChange={(v) => { if (v) handleLink(inst.id, v); }}
+                          disabled={isLinking}
+                        >
+                          <SelectTrigger className="h-7 w-7 shrink-0 p-0" title="Vincular factura existente">
+                            <Link className="size-3" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {customerInvoices.map((inv) => (
+                              <SelectItem key={inv.id} value={inv.id}>
+                                {[inv.serie, inv.folio].filter(Boolean).join("-") || "(sin folio)"} — {formatCurrency(inv.total)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       )}
                     </div>
                   ) : canEdit && onLinkInvoice && customerInvoices.length > 0 ? (
@@ -339,6 +631,8 @@ export function PaymentPlanPanel({
   onDeleteAll,
   onGenerateSchedule,
   onLinkInvoice,
+  onGenerateMilestones,
+  onUploadInvoice,
 }: {
   financials: ProjectFinancials | null;
   installments: Installment[];
@@ -353,6 +647,8 @@ export function PaymentPlanPanel({
   onDeleteAll: () => Promise<void>;
   onGenerateSchedule: (config: FinancingConfigInput) => Promise<void>;
   onLinkInvoice?: (installmentId: string, invoiceId: string | null) => Promise<void>;
+  onGenerateMilestones?: (plan: MilestonePlanInput) => Promise<void>;
+  onUploadInvoice?: (installmentId: string, amount: number, dueDate: string | null, formData: FormData) => Promise<void>;
 }) {
   const router = useRouter();
   const [deletingAll, setDeletingAll] = useState(false);
@@ -431,15 +727,23 @@ export function PaymentPlanPanel({
         ) : paymentType === "milestones" ? (
           <div className="space-y-4">
             {canEdit && (
-              <PaymentScheduleDialog
-                onSubmit={onCreate}
-                budgetSold={financials?.budget_sold}
-                trigger={
-                  <Button size="sm">
-                    <Plus className="size-4" /> Nueva cuota
-                  </Button>
-                }
-              />
+              <div className="flex flex-wrap gap-2">
+                {installments.length === 0 && onGenerateMilestones && financials && (
+                  <MilestoneGeneratorDialog
+                    budgetSold={financials.budget_sold}
+                    onGenerate={onGenerateMilestones}
+                  />
+                )}
+                <PaymentScheduleDialog
+                  onSubmit={onCreate}
+                  budgetSold={financials?.budget_sold}
+                  trigger={
+                    <Button size="sm" variant={installments.length === 0 ? "outline" : "default"}>
+                      <Plus className="size-4" /> Nueva cuota
+                    </Button>
+                  }
+                />
+              </div>
             )}
             {installments.length === 0 ? (
               <p className="text-sm text-muted-foreground">Sin cuotas registradas.</p>
@@ -452,6 +756,7 @@ export function PaymentPlanPanel({
                 onUpdate={onUpdate}
                 onDelete={onDelete}
                 onLinkInvoice={onLinkInvoice}
+                onUploadInvoice={onUploadInvoice}
               />
             )}
           </div>
@@ -501,7 +806,10 @@ export function PaymentPlanPanel({
                   const totalCuotas = installments.reduce((s, i) => s + i.amount, 0);
                   const downPay = financials?.down_payment ?? 0;
                   const principal = (financials?.budget_sold ?? 0) - downPay;
-                  const interestIncome = totalCuotas - principal;
+                  const hasBreakdown = installments.some((i) => i.interest_amount != null);
+                  const interestIncome = hasBreakdown
+                    ? installments.reduce((s, i) => s + (i.interest_amount ?? 0), 0)
+                    : totalCuotas - principal;
                   return (
                     <div className="rounded-md border bg-muted/30 px-4 py-3 text-sm space-y-1">
                       <div className="flex items-center justify-between text-muted-foreground">
@@ -511,7 +819,7 @@ export function PaymentPlanPanel({
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-muted-foreground">
-                        <span>Total a cobrar</span>
+                        <span>Total con intereses</span>
                         <span className="tabular-nums font-medium text-foreground">{formatCurrency(totalCuotas)}</span>
                       </div>
                       {interestIncome > 0 && (
@@ -531,6 +839,8 @@ export function PaymentPlanPanel({
                   onUpdate={onUpdate}
                   onDelete={onDelete}
                   onLinkInvoice={onLinkInvoice}
+                  showAmortization
+                  financingPrincipal={(financials?.budget_sold ?? 0) - (financials?.down_payment ?? 0)}
                 />
               </div>
             )}

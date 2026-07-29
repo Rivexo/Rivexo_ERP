@@ -6,6 +6,7 @@ import { updateProjectPaymentConfig } from "@/services/projects.service";
 import {
   createCostInstallment,
   updateCostInstallment,
+  updateCostInstallmentStatus,
   deleteCostInstallment,
   deleteAllCostInstallments,
   generateCostScheduleFromCollection,
@@ -14,7 +15,9 @@ import {
 
 function revalidate(projectId: string) {
   revalidatePath(`/projects/${projectId}`);
-  revalidatePath(`/projects/${projectId}/finances`);
+  revalidatePath(`/erp/projects/${projectId}`);
+  revalidatePath("/erp/projects");
+  revalidatePath("/erp/accounting/payables");
 }
 
 export async function setCostPaymentTypeAction(
@@ -43,6 +46,17 @@ export async function updateCostInstallmentAction(
   const parsed = costInstallmentSchema.parse(input);
   await updateCostInstallment(id, parsed);
   revalidate(projectId);
+}
+
+export async function updateCostInstallmentStatusAction(
+  projectId: string,
+  id: string,
+  status: "pending" | "paid",
+): Promise<void> {
+  await updateCostInstallmentStatus(id, status);
+  revalidate(projectId);
+  revalidatePath("/erp/accounting/payables");
+  revalidatePath("/erp/accounting/balance-sheet");
 }
 
 export async function deleteCostInstallmentAction(projectId: string, id: string): Promise<void> {

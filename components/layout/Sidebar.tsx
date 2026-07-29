@@ -89,6 +89,7 @@ export function Sidebar({ role }: { role: UserRole }) {
   ];
 
   const erpItems: NavItem[] = [
+    { href: "/erp/projects", label: "Proyectos (finanzas)", icon: FolderKanban },
     { href: "/erp/costs", label: "Costos", icon: ReceiptText },
     { href: "/erp/revenues", label: "Ingresos", icon: DollarSign },
     { href: "/erp/invoices", label: "Facturas", icon: FilePlus },

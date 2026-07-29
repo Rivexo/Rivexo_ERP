@@ -14,8 +14,10 @@ import { getProject } from "@/services/projects.service";
 
 function revalidate(projectId: string) {
   revalidatePath(`/projects/${projectId}`);
-  revalidatePath(`/projects/${projectId}/finances`);
+  revalidatePath(`/erp/projects/${projectId}`);
+  revalidatePath("/erp/projects");
   revalidatePath("/erp/invoices");
+  revalidatePath("/erp/accounting/receivables");
 }
 
 export async function createPaymentAction(projectId: string, formData: FormData): Promise<void> {
