@@ -6,14 +6,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   CalendarClock,
+  CheckCircle2,
   FileUp,
   Link,
   Link2Off,
   ListChecks,
+  Paperclip,
   Pencil,
   Plus,
   RotateCcw,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,6 +41,7 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PaymentScheduleDialog } from "@/components/crm/PaymentScheduleDialog";
 import { cn, formatCurrency } from "@/lib/utils";
+import { calcIvaBreakdown } from "@/lib/iva";
 import { financingConfigSchema, type FinancingConfigFormValues, type FinancingConfigInput } from "@/lib/validations/project-payment";
 import type { MilestonePlanInput } from "@/lib/validations/milestone-plan";
 import type { InstallmentInput } from "@/lib/validations/installment";
@@ -66,9 +70,11 @@ function calcPmt(principal: number, monthlyRate: number, n: number): number {
 
 function FinancingForm({
   financials,
+  ivaRate,
   onGenerate,
 }: {
   financials: ProjectFinancials;
+  ivaRate: number;
   onGenerate: (config: FinancingConfigInput) => Promise<void>;
 }) {
   const router = useRouter();
@@ -165,6 +171,21 @@ function FinancingForm({
             <span className="tabular-nums">{formatCurrency(pmt)}</span>
           </div>
         )}
+        {n > 0 && (() => {
+          const { ivaAmount, total } = calcIvaBreakdown(pmt, ivaRate);
+          return (
+            <>
+              <div className="flex justify-between text-muted-foreground">
+                <span>IVA</span>
+                <span className="tabular-nums">{formatCurrency(ivaAmount)}</span>
+              </div>
+              <div className="flex justify-between font-semibold">
+                <span>Cuota mensual con IVA</span>
+                <span className="tabular-nums">{formatCurrency(total)}</span>
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
@@ -181,9 +202,11 @@ type ExhibitionDraft = { label: string; percentage: string; due_date: string };
 
 function MilestoneGeneratorDialog({
   budgetSold,
+  ivaRate,
   onGenerate,
 }: {
   budgetSold: number;
+  ivaRate: number;
   onGenerate: (plan: MilestonePlanInput) => Promise<void>;
 }) {
   const router = useRouter();
@@ -303,6 +326,25 @@ function MilestoneGeneratorDialog({
           <p className={cn("text-sm", Math.abs(totalPct - 100) < 0.01 ? "text-muted-foreground" : "text-destructive")}>
             Total: {totalPct.toFixed(1)}% {Math.abs(totalPct - 100) >= 0.01 && "(debe sumar 100%)"}
           </p>
+          {(() => {
+            const { ivaAmount, total } = calcIvaBreakdown(budgetSold, ivaRate);
+            return (
+              <div className="rounded-md border bg-muted/30 px-4 py-3 text-sm space-y-1">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span className="tabular-nums">{formatCurrency(budgetSold)}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>IVA</span>
+                  <span className="tabular-nums">{formatCurrency(ivaAmount)}</span>
+                </div>
+                <div className="flex justify-between font-semibold">
+                  <span>Total con IVA</span>
+                  <span className="tabular-nums">{formatCurrency(total)}</span>
+                </div>
+              </div>
+            );
+          })()}
           {error && <p className="text-sm text-destructive">{error}</p>}
           <DialogFooter>
             <Button type="submit" disabled={isSubmitting || Math.abs(totalPct - 100) >= 0.01}>
@@ -379,32 +421,99 @@ function UploadInstallmentInvoiceDialog({
   );
 }
 
+function UploadInstallmentComplementDialog({
+  installment,
+  trigger,
+  onUpload,
+}: {
+  installment: Installment;
+  trigger: React.ReactNode;
+  onUpload: (installmentId: string, formData: FormData) => Promise<void>;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const formData = new FormData(formRef.current!);
+    setIsSubmitting(true);
+    try {
+      await onUpload(installment.id, formData);
+      formRef.current?.reset();
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ocurrió un error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={trigger as React.ReactElement} />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Complemento de pago: {installment.label}</DialogTitle>
+        </DialogHeader>
+        <form ref={formRef} onSubmit={submit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="complement-pdf">PDF</Label>
+            <Input id="complement-pdf" name="pdf" type="file" accept="application/pdf" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="complement-xml">XML (CFDI)</Label>
+            <Input id="complement-xml" name="xml" type="file" accept=".xml,text/xml,application/xml" />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Subiendo..." : "Subir"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function InstallmentTable({
   installments,
   canEdit,
   budgetSold,
+  ivaRate,
   customerInvoices,
   onUpdate,
   onDelete,
   onLinkInvoice,
   onUploadInvoice,
+  onUpdateStatus,
+  onUploadComplement,
   showAmortization,
   financingPrincipal,
 }: {
   installments: Installment[];
   canEdit: boolean;
   budgetSold?: number;
+  ivaRate: number;
   customerInvoices: CustomerInvoiceWithRelations[];
   onUpdate: (id: string, input: InstallmentInput) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onLinkInvoice?: (installmentId: string, invoiceId: string | null) => Promise<void>;
   onUploadInvoice?: (installmentId: string, amount: number, dueDate: string | null, formData: FormData) => Promise<void>;
+  onUpdateStatus?: (id: string, status: "pending" | "paid") => Promise<void>;
+  onUploadComplement?: (installmentId: string, formData: FormData) => Promise<void>;
   showAmortization?: boolean;
   financingPrincipal?: number;
 }) {
   const router = useRouter();
   const today = new Date().toISOString().slice(0, 10);
   const [linkingId, setLinkingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const showPct = !showAmortization && !!budgetSold && budgetSold > 0;
 
   const total = installments.reduce((s, i) => s + i.amount, 0);
@@ -439,6 +548,17 @@ function InstallmentTable({
     }
   }
 
+  async function handleToggleStatus(id: string, current: string) {
+    if (!onUpdateStatus) return;
+    setTogglingId(id);
+    try {
+      await onUpdateStatus(id, current === "paid" ? "pending" : "paid");
+      router.refresh();
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex gap-4 text-sm">
@@ -461,10 +581,12 @@ function InstallmentTable({
               </>
             )}
             <TableHead>Monto</TableHead>
+            <TableHead>Total c/IVA</TableHead>
             {showAmortization && <TableHead>Saldo</TableHead>}
             <TableHead>Vencimiento</TableHead>
             <TableHead>Estatus</TableHead>
             <TableHead>Factura CFDI</TableHead>
+            <TableHead>Complemento</TableHead>
             {canEdit && <TableHead />}
           </TableRow>
         </TableHeader>
@@ -494,6 +616,9 @@ function InstallmentTable({
                   </>
                 )}
                 <TableCell className="tabular-nums">{formatCurrency(inst.amount)}</TableCell>
+                <TableCell className="tabular-nums text-muted-foreground">
+                  {formatCurrency(calcIvaBreakdown(inst.amount, ivaRate).total)}
+                </TableCell>
                 {showAmortization && (
                   <TableCell className="tabular-nums text-muted-foreground">
                     {formatCurrency(balances.get(inst.id) ?? 0)}
@@ -506,9 +631,29 @@ function InstallmentTable({
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
-                    <Badge variant={STATUS_VARIANT[inst.status] ?? "outline"}>
-                      {STATUS_LABELS[inst.status] ?? inst.status}
-                    </Badge>
+                    {canEdit && onUpdateStatus ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 gap-1 px-2 text-xs"
+                        disabled={togglingId === inst.id}
+                        onClick={() => handleToggleStatus(inst.id, inst.status)}
+                      >
+                        {inst.status === "paid" ? (
+                          <>
+                            <Undo2 className="size-3" /> Pagada
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="size-3" /> {STATUS_LABELS[inst.status] ?? inst.status}
+                          </>
+                        )}
+                      </Button>
+                    ) : (
+                      <Badge variant={STATUS_VARIANT[inst.status] ?? "outline"}>
+                        {STATUS_LABELS[inst.status] ?? inst.status}
+                      </Badge>
+                    )}
                     {isOverdue && <Badge variant="destructive">Vencida</Badge>}
                   </div>
                 </TableCell>
@@ -585,6 +730,27 @@ function InstallmentTable({
                     <span className="text-xs text-muted-foreground">—</span>
                   )}
                 </TableCell>
+                <TableCell>
+                  {inst.complement_pdf_path || inst.complement_xml_path ? (
+                    <Badge variant="secondary" className="gap-1">
+                      <CheckCircle2 className="size-3" /> Complemento
+                    </Badge>
+                  ) : inst.status === "paid" && canEdit && onUploadComplement ? (
+                    <UploadInstallmentComplementDialog
+                      installment={inst}
+                      onUpload={onUploadComplement}
+                      trigger={
+                        <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
+                          <Paperclip className="size-3" /> Subir complemento
+                        </Button>
+                      }
+                    />
+                  ) : (
+                    <span className="text-xs text-muted-foreground" title="Disponible al marcar como pagada">
+                      —
+                    </span>
+                  )}
+                </TableCell>
                 {canEdit && (
                   <TableCell>
                     <div className="flex items-center gap-1">
@@ -633,6 +799,8 @@ export function PaymentPlanPanel({
   onLinkInvoice,
   onGenerateMilestones,
   onUploadInvoice,
+  onUploadComplement,
+  onUpdateStatus,
 }: {
   financials: ProjectFinancials | null;
   installments: Installment[];
@@ -649,7 +817,10 @@ export function PaymentPlanPanel({
   onLinkInvoice?: (installmentId: string, invoiceId: string | null) => Promise<void>;
   onGenerateMilestones?: (plan: MilestonePlanInput) => Promise<void>;
   onUploadInvoice?: (installmentId: string, amount: number, dueDate: string | null, formData: FormData) => Promise<void>;
+  onUploadComplement?: (installmentId: string, formData: FormData) => Promise<void>;
+  onUpdateStatus?: (id: string, status: "pending" | "paid") => Promise<void>;
 }) {
+  const ivaRate = financials?.iva_rate ?? 0.16;
   const router = useRouter();
   const [deletingAll, setDeletingAll] = useState(false);
 
@@ -731,6 +902,7 @@ export function PaymentPlanPanel({
                 {installments.length === 0 && onGenerateMilestones && financials && (
                   <MilestoneGeneratorDialog
                     budgetSold={financials.budget_sold}
+                    ivaRate={ivaRate}
                     onGenerate={onGenerateMilestones}
                   />
                 )}
@@ -752,11 +924,14 @@ export function PaymentPlanPanel({
                 installments={installments}
                 canEdit={canEdit}
                 budgetSold={financials?.budget_sold}
+                ivaRate={ivaRate}
                 customerInvoices={customerInvoices}
                 onUpdate={onUpdate}
                 onDelete={onDelete}
                 onLinkInvoice={onLinkInvoice}
                 onUploadInvoice={onUploadInvoice}
+                onUpdateStatus={onUpdateStatus}
+                onUploadComplement={onUploadComplement}
               />
             )}
           </div>
@@ -764,7 +939,7 @@ export function PaymentPlanPanel({
           <div className="space-y-4">
             {installments.length === 0 ? (
               financials && (
-                <FinancingForm financials={financials} onGenerate={onGenerateSchedule} />
+                <FinancingForm financials={financials} ivaRate={ivaRate} onGenerate={onGenerateSchedule} />
               )
             ) : (
               <div className="space-y-4">
@@ -828,6 +1003,21 @@ export function PaymentPlanPanel({
                           <span className="tabular-nums text-emerald-600">{formatCurrency(interestIncome)}</span>
                         </div>
                       )}
+                      {(() => {
+                        const { ivaAmount, total } = calcIvaBreakdown(totalCuotas, ivaRate);
+                        return (
+                          <>
+                            <div className="flex items-center justify-between text-muted-foreground">
+                              <span>IVA</span>
+                              <span className="tabular-nums">{formatCurrency(ivaAmount)}</span>
+                            </div>
+                            <div className="flex items-center justify-between font-semibold pt-1 border-t">
+                              <span>Total con IVA</span>
+                              <span className="tabular-nums">{formatCurrency(total)}</span>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   );
                 })()}
@@ -835,10 +1025,13 @@ export function PaymentPlanPanel({
                   installments={installments}
                   canEdit={canEdit}
                   budgetSold={financials?.budget_sold}
+                  ivaRate={ivaRate}
                   customerInvoices={customerInvoices}
                   onUpdate={onUpdate}
                   onDelete={onDelete}
                   onLinkInvoice={onLinkInvoice}
+                  onUpdateStatus={onUpdateStatus}
+                  onUploadComplement={onUploadComplement}
                   showAmortization
                   financingPrincipal={(financials?.budget_sold ?? 0) - (financials?.down_payment ?? 0)}
                 />

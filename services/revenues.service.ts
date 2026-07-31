@@ -49,7 +49,7 @@ export type ForecastRow = {
   amount: number;
   due_date: string | null;
   is_overdue: boolean;
-  status: "pending" | "invoiced" | "paid";
+  status: "pending" | "invoiced" | "partially_paid" | "paid";
   source: "project" | "support";
 };
 
@@ -68,7 +68,7 @@ export async function getRevenueForecast(): Promise<ForecastSummary> {
     supabase
       .from("deal_payment_installments")
       .select("id, deal_id, project_id, label, amount, due_date, status, deal:deals(name, account:accounts(name), stage:pipeline_stages(is_won))")
-      .in("status", ["pending", "invoiced"])
+      .neq("status", "paid")
       .order("due_date", { ascending: true, nullsFirst: false }),
     supabase
       .from("monthly_support_subscriptions")
@@ -209,6 +209,93 @@ export async function getExpenseForecast(): Promise<ExpenseForecastRow[]> {
     if (!b.due_date) return -1;
     return a.due_date.localeCompare(b.due_date);
   });
+}
+
+export type IncomeTimelineRow = {
+  month: string;
+  deployment_amount: number;
+  support_amount: number;
+  is_projected: boolean;
+};
+
+// Forecast mensual de ingresos: deployment y soporte reales (ya generados/pendientes)
+// más soporte proyectado para los meses siguientes al último período ya facturado,
+// a partir de las suscripciones activas (sin insertar nada en BD, solo estimación).
+export async function getIncomeTimeline(monthsAhead: number): Promise<IncomeTimelineRow[]> {
+  const supabase = await createClient();
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+
+  const [installmentsResult, billingResult, subscriptionsResult] = await Promise.all([
+    supabase
+      .from("deal_payment_installments")
+      .select("project_id, amount, due_date")
+      .neq("status", "paid")
+      .not("due_date", "is", null),
+    supabase
+      .from("support_billing_records")
+      .select("period, amount")
+      .eq("status", "pending"),
+    supabase
+      .from("monthly_support_subscriptions")
+      .select("id, project_id, amount, status, start_date")
+      .eq("status", "active")
+      .lte("start_date", todayStr),
+  ]);
+  if (installmentsResult.error) throw installmentsResult.error;
+  if (billingResult.error) throw billingResult.error;
+  if (subscriptionsResult.error) throw subscriptionsResult.error;
+
+  const subscribedProjectIds = (subscriptionsResult.data ?? [])
+    .filter((s) => s.project_id)
+    .map((s) => s.project_id as string);
+  const currentPhaseByProject = await getCurrentPhaseByProject(subscribedProjectIds);
+  const supportProjectIds = new Set(subscribedProjectIds.filter((id) => currentPhaseByProject.get(id) === "S"));
+
+  const byMonth = new Map<string, { deployment: number; support: number }>();
+  function addTo(month: string, key: "deployment" | "support", amount: number) {
+    const entry = byMonth.get(month) ?? { deployment: 0, support: 0 };
+    entry[key] += amount;
+    byMonth.set(month, entry);
+  }
+
+  for (const row of installmentsResult.data ?? []) {
+    const month = row.due_date!.slice(0, 7);
+    const isSupport = row.project_id != null && supportProjectIds.has(row.project_id);
+    addTo(month, isSupport ? "support" : "deployment", row.amount);
+  }
+
+  const billedPeriods = new Set<string>();
+  for (const row of billingResult.data ?? []) {
+    const month = row.period.slice(0, 7);
+    billedPeriods.add(month);
+    addTo(month, "support", row.amount);
+  }
+
+  // Meses proyectados: para cada mes futuro sin support_billing_records real
+  // todavía, se suma el monto de cada suscripción activa como estimado.
+  const projectedMonths = new Set<string>();
+  for (let i = 0; i <= monthsAhead; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+    const month = d.toISOString().slice(0, 7);
+    if (billedPeriods.has(month)) continue;
+    projectedMonths.add(month);
+    for (const sub of subscriptionsResult.data ?? []) {
+      addTo(month, "support", sub.amount);
+    }
+  }
+
+  // Se conservan los meses pasados con saldo real pendiente (vencido) para que
+  // el mismo resultado sirva de forecast "real" en CxC/CxP; solo los meses
+  // futuros pueden llevar la marca de proyectado.
+  return Array.from(byMonth.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, { deployment, support }]) => ({
+      month,
+      deployment_amount: Math.round(deployment * 100) / 100,
+      support_amount: Math.round(support * 100) / 100,
+      is_projected: projectedMonths.has(month),
+    }));
 }
 
 export async function createRevenue(input: RevenueInput): Promise<void> {

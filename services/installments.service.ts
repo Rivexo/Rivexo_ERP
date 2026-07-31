@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 import type { InstallmentInput } from "@/lib/validations/installment";
 import type { MilestoneExhibition } from "@/lib/validations/milestone-plan";
+import { postJournalEntry, type JournalLineInput } from "@/services/accounting.service";
+import { calcIvaBreakdown } from "@/lib/iva";
 
 export type Installment = Database["public"]["Tables"]["deal_payment_installments"]["Row"];
 
@@ -22,7 +24,7 @@ export async function listPendingInstallmentsByProject(projectId: string): Promi
     .from("deal_payment_installments")
     .select("*")
     .eq("project_id", projectId)
-    .in("status", ["pending", "invoiced"])
+    .neq("status", "paid")
     .order("due_date", { ascending: true, nullsFirst: false });
   if (error) throw error;
   return data;
@@ -279,6 +281,100 @@ export async function generateMilestoneSchedule(
   if (error) throw error;
 }
 
+// Mecanismo único para "marcar cobrada" una cuota del plan de pagos (reemplaza
+// al dropdown manual de estatus + el registro desconectado de "pagos
+// recibidos"). Postea el asiento con el IVA calculado al vuelo desde
+// project_financials.iva_rate del proyecto de la cuota; si la cuota trae
+// desglose de financiamiento (principal/interés) se abonan por separado.
+export async function updateInstallmentStatus(id: string, status: "pending" | "paid"): Promise<void> {
+  const supabase = await createClient();
+  const { data: current, error: currentError } = await supabase
+    .from("deal_payment_installments")
+    .select("amount, principal_amount, interest_amount, status, label, project_id")
+    .eq("id", id)
+    .single();
+  if (currentError) throw currentError;
+  if (current.status === status) return;
+
+  const { error } = await supabase
+    .from("deal_payment_installments")
+    .update({ status, paid_at: status === "paid" ? new Date().toISOString() : null })
+    .eq("id", id);
+  if (error) throw error;
+
+  let ivaRate = 0.16;
+  if (current.project_id) {
+    const { data: fin } = await supabase
+      .from("project_financials")
+      .select("iva_rate")
+      .eq("project_id", current.project_id)
+      .maybeSingle();
+    if (fin?.iva_rate != null) ivaRate = fin.iva_rate;
+  }
+
+  const { ivaAmount, total } = calcIvaBreakdown(current.amount, ivaRate);
+  const hasInterest = current.interest_amount != null && current.principal_amount != null;
+  const principalPart = hasInterest ? current.principal_amount! : current.amount;
+
+  const today = new Date().toISOString().slice(0, 10);
+  const description = `${status === "paid" ? "Cobro" : "Reversión de cobro"}: ${current.label}`;
+
+  const lines: JournalLineInput[] = [];
+  if (status === "paid") {
+    lines.push({ accountCode: "1100", debit: total });
+    lines.push({ accountCode: "4100", credit: principalPart });
+    if (hasInterest && current.interest_amount! > 0) {
+      lines.push({ accountCode: "4300", credit: current.interest_amount! });
+    }
+    if (ivaAmount > 0) lines.push({ accountCode: "2200", credit: ivaAmount });
+  } else {
+    lines.push({ accountCode: "1100", credit: total });
+    lines.push({ accountCode: "4100", debit: principalPart });
+    if (hasInterest && current.interest_amount! > 0) {
+      lines.push({ accountCode: "4300", debit: current.interest_amount! });
+    }
+    if (ivaAmount > 0) lines.push({ accountCode: "2200", debit: ivaAmount });
+  }
+
+  await postJournalEntry(today, description, "installment_payment", id, lines);
+}
+
+// Sube el complemento de pago CFDI directo a la cuota (una exhibición = un
+// pago = un complemento). Se habilita en la UI solo cuando la cuota ya está
+// marcada como pagada.
+export async function uploadInstallmentComplement(
+  installmentId: string,
+  projectId: string,
+  pdfFile?: File | null,
+  xmlFile?: File | null,
+): Promise<void> {
+  const supabase = await createClient();
+  const updates: { complement_pdf_path?: string; complement_xml_path?: string } = {};
+
+  if (pdfFile && pdfFile.size > 0) {
+    const path = `${projectId}/${installmentId}/complemento.pdf`;
+    const { error } = await supabase.storage
+      .from("payments")
+      .upload(path, pdfFile, { contentType: "application/pdf", upsert: true });
+    if (error) throw error;
+    updates.complement_pdf_path = path;
+  }
+
+  if (xmlFile && xmlFile.size > 0) {
+    const path = `${projectId}/${installmentId}/complemento.xml`;
+    const { error } = await supabase.storage
+      .from("payments")
+      .upload(path, xmlFile, { contentType: "text/xml", upsert: true });
+    if (error) throw error;
+    updates.complement_xml_path = path;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    const { error } = await supabase.from("deal_payment_installments").update(updates).eq("id", installmentId);
+    if (error) throw error;
+  }
+}
+
 export async function linkInvoiceToInstallment(installmentId: string, invoiceId: string | null): Promise<void> {
   const supabase = await createClient();
   const { error } = await supabase
@@ -304,7 +400,7 @@ export async function getAccountsReceivable(): Promise<AccountsReceivableRow[]> 
   const { data, error } = await supabase
     .from("deal_payment_installments")
     .select("id, deal_id, project_id, label, amount, due_date, status, deal:deals(name, stage:pipeline_stages(is_won), account:accounts(name))")
-    .in("status", ["pending", "invoiced"])
+    .neq("status", "paid")
     .order("due_date", { ascending: true, nullsFirst: false });
   if (error) throw error;
 

@@ -109,3 +109,44 @@ export async function getPayrollCostByProject(period: string): Promise<ProjectPa
 
   return Array.from(byProject.entries()).map(([project_id, amount]) => ({ project_id, amount }));
 }
+
+export type PayablesForecastRow = {
+  month: string;
+  freelancer_amount: number;
+  employee_amount: number;
+};
+
+// Forecast de CxP basado únicamente en costo directo ya programado
+// (project_cost_installments no pagadas), sin incluir freelancer_invoices
+// sueltas — ese es el "costo directo del freelancer o absorbido para
+// empleado" que pidió el usuario, no cualquier factura de proveedor.
+export async function getPayablesForecast(monthsAhead: number): Promise<PayablesForecastRow[]> {
+  const supabase = await createClient();
+  const today = new Date();
+  const cutoff = new Date(today.getFullYear(), today.getMonth() + monthsAhead + 1, 1).toISOString().slice(0, 10);
+
+  const { data, error } = await supabase
+    .from("project_cost_installments")
+    .select("amount, due_date, payee_type")
+    .neq("status", "paid")
+    .not("due_date", "is", null)
+    .lt("due_date", cutoff);
+  if (error) throw error;
+
+  const byMonth = new Map<string, { freelancer: number; employee: number }>();
+  for (const row of data ?? []) {
+    const month = row.due_date!.slice(0, 7);
+    const entry = byMonth.get(month) ?? { freelancer: 0, employee: 0 };
+    if (row.payee_type === "employee") entry.employee += row.amount;
+    else entry.freelancer += row.amount;
+    byMonth.set(month, entry);
+  }
+
+  return Array.from(byMonth.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, { freelancer, employee }]) => ({
+      month,
+      freelancer_amount: Math.round(freelancer * 100) / 100,
+      employee_amount: Math.round(employee * 100) / 100,
+    }));
+}

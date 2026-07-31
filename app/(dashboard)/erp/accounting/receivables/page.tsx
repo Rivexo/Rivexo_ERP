@@ -3,18 +3,21 @@ import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { MonthlyForecastChart } from "@/components/erp/MonthlyForecastChart";
 import { canAccessErp } from "@/lib/permissions";
 import { formatCurrency } from "@/lib/utils";
 import { getCurrentProfile } from "@/services/profiles.service";
 import { getAccountsReceivable } from "@/services/installments.service";
+import { getIncomeTimeline } from "@/services/revenues.service";
 
 export default async function AccountsReceivablePage() {
   const profile = await getCurrentProfile();
   if (!profile || !canAccessErp(profile.role)) redirect("/");
 
-  const rows = await getAccountsReceivable();
+  const [rows, timeline] = await Promise.all([getAccountsReceivable(), getIncomeTimeline(2)]);
   const total = rows.reduce((sum, r) => sum + r.amount, 0);
   const overdueTotal = rows.filter((r) => r.is_overdue).reduce((sum, r) => sum + r.amount, 0);
+  const realTimeline = timeline.filter((row) => !row.is_projected);
 
   return (
     <div className="space-y-6">
@@ -30,6 +33,20 @@ export default async function AccountsReceivablePage() {
           <p className="text-2xl font-semibold text-destructive">{formatCurrency(overdueTotal)}</p>
         </div>
       </div>
+
+      <MonthlyForecastChart
+        title="Por cobrar real por mes"
+        description="Solo compromisos ya generados (sin proyección), deployment vs. soporte"
+        rows={realTimeline.map((row) => ({
+          month: row.month,
+          primary: row.deployment_amount,
+          secondary: row.support_amount,
+        }))}
+        primaryLabel="Deployment"
+        secondaryLabel="Soporte"
+        primaryColor="#3b82f6"
+        secondaryColor="#a855f7"
+      />
 
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">No hay cuotas pendientes de cobro.</p>

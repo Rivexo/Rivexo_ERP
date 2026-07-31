@@ -48,7 +48,7 @@ export async function listProjectsFinancialSummary(): Promise<ProjectFinancialSu
     const collected = row.installments
       .filter((i) => i.status === "paid")
       .reduce((s, i) => s + i.amount, 0);
-    const pendingRows = row.installments.filter((i) => i.status === "pending" || i.status === "invoiced");
+    const pendingRows = row.installments.filter((i) => i.status !== "paid");
     const receivable = pendingRows.reduce((s, i) => s + i.amount, 0);
     const overdue = pendingRows
       .filter((i) => !!i.due_date && i.due_date < today)

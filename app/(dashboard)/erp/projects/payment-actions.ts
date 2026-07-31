@@ -8,6 +8,8 @@ import { milestonePlanSchema, type MilestonePlanInput } from "@/lib/validations/
 import {
   createInstallmentForProject,
   updateInstallment,
+  updateInstallmentStatus,
+  uploadInstallmentComplement,
   deleteInstallment,
   deleteAllInstallmentsByDeal,
   generateProjectFinancingSchedule,
@@ -135,4 +137,31 @@ export async function uploadInstallmentInvoiceAction(
   );
   revalidate(projectId);
   revalidatePath("/erp/accounting/receivables");
+}
+
+export async function updateInstallmentStatusAction(
+  projectId: string,
+  id: string,
+  status: "pending" | "paid",
+): Promise<void> {
+  await updateInstallmentStatus(id, status);
+  revalidate(projectId);
+  revalidatePath("/erp/accounting/receivables");
+  revalidatePath("/erp/accounting/balance-sheet");
+}
+
+export async function uploadInstallmentComplementAction(
+  projectId: string,
+  installmentId: string,
+  formData: FormData,
+): Promise<void> {
+  const pdf = formData.get("pdf");
+  const xml = formData.get("xml");
+  await uploadInstallmentComplement(
+    installmentId,
+    projectId,
+    pdf instanceof File ? pdf : null,
+    xml instanceof File ? xml : null,
+  );
+  revalidate(projectId);
 }

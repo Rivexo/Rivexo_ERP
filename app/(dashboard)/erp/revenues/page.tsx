@@ -2,9 +2,16 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { RevenueList } from "@/components/erp/RevenueList";
 import { RevenueForecast } from "@/components/erp/RevenueForecast";
+import { MonthlyForecastChart } from "@/components/erp/MonthlyForecastChart";
 import { canAccessErp } from "@/lib/permissions";
 import { getCurrentProfile } from "@/services/profiles.service";
-import { listRevenues, listAllInstallmentsWithProject, getRevenueForecast, getExpenseForecast } from "@/services/revenues.service";
+import {
+  listRevenues,
+  listAllInstallmentsWithProject,
+  getRevenueForecast,
+  getExpenseForecast,
+  getIncomeTimeline,
+} from "@/services/revenues.service";
 import type { ForecastRow, ForecastSummary } from "@/services/revenues.service";
 import { listProjects } from "@/services/projects.service";
 import { createRevenueAction, deleteRevenueAction, updateRevenueAction } from "./actions";
@@ -25,12 +32,13 @@ export default async function ErpRevenuesPage() {
   const profile = await getCurrentProfile();
   if (!profile || !canAccessErp(profile.role)) redirect("/");
 
-  const [revenues, projects, installments, forecast, expenseForecast] = await Promise.all([
+  const [revenues, projects, installments, forecast, expenseForecast, timeline] = await Promise.all([
     listRevenues(),
     listProjects(),
     listAllInstallmentsWithProject(),
     getRevenueForecast(),
     getExpenseForecast(),
+    getIncomeTimeline(11),
   ]);
 
   const projectForecast = buildSummary(forecast.rows.filter((r) => r.source === "project"));
@@ -44,6 +52,21 @@ export default async function ErpRevenuesPage() {
           description="Forecast de cobranza comprometida (Closed Won) y cobros registrados"
         />
       </div>
+
+      <MonthlyForecastChart
+        title="Forecast de ingresos — próximos meses"
+        description="Deployment (proyectos) vs. soporte, incluyendo meses de soporte aún no facturados (proyectado)"
+        rows={timeline.map((row) => ({
+          month: row.month,
+          primary: row.deployment_amount,
+          secondary: row.support_amount,
+          is_projected: row.is_projected,
+        }))}
+        primaryLabel="Deployment"
+        secondaryLabel="Soporte"
+        primaryColor="#3b82f6"
+        secondaryColor="#a855f7"
+      />
 
       {/* Forecast — Deployment */}
       <section>

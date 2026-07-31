@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn, formatCurrency } from "@/lib/utils";
+import { calcIvaBreakdown } from "@/lib/iva";
 import type { CostInstallmentInput } from "@/lib/validations/cost-installment";
 import type { ProjectCostInstallmentWithRelations } from "@/services/project-cost-schedule.service";
 import type { ProjectFinancials } from "@/services/projects.service";
@@ -131,6 +132,7 @@ function CostInstallmentDialog({
 function CostInstallmentTable({
   installments,
   canEdit,
+  ivaRate,
   freelancerInvoices,
   onUpdate,
   onDelete,
@@ -139,6 +141,7 @@ function CostInstallmentTable({
 }: {
   installments: ProjectCostInstallmentWithRelations[];
   canEdit: boolean;
+  ivaRate: number;
   freelancerInvoices: FreelancerInvoiceWithRelations[];
   onUpdate: (id: string, input: CostInstallmentInput) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -196,6 +199,7 @@ function CostInstallmentTable({
             <TableHead>Etiqueta</TableHead>
             <TableHead>Beneficiario</TableHead>
             <TableHead>Monto</TableHead>
+            <TableHead>Total c/IVA</TableHead>
             <TableHead>Vencimiento</TableHead>
             <TableHead>Estatus</TableHead>
             <TableHead>Factura freelancer</TableHead>
@@ -220,6 +224,9 @@ function CostInstallmentTable({
                   <Badge variant="outline">{PAYEE_LABELS[inst.payee_type] ?? inst.payee_type}</Badge>
                 </TableCell>
                 <TableCell className="tabular-nums">{formatCurrency(inst.amount)}</TableCell>
+                <TableCell className="tabular-nums text-muted-foreground">
+                  {formatCurrency(calcIvaBreakdown(inst.amount, ivaRate).total)}
+                </TableCell>
                 <TableCell>
                   {inst.due_date
                     ? new Date(`${inst.due_date}T00:00:00`).toLocaleDateString("es-MX")
@@ -362,6 +369,7 @@ export function CostSchedulePanel({
   const [error, setError] = useState<string | null>(null);
 
   const costType = financials?.cost_payment_type ?? null;
+  const ivaRate = financials?.iva_rate ?? 0.16;
 
   async function handleSetType(type: string) {
     await onSetCostPaymentType(type);
@@ -499,6 +507,7 @@ export function CostSchedulePanel({
               <CostInstallmentTable
                 installments={costInstallments}
                 canEdit={canEdit}
+                ivaRate={ivaRate}
                 freelancerInvoices={freelancerInvoices}
                 onUpdate={onUpdate}
                 onDelete={onDelete}
@@ -524,6 +533,7 @@ export function CostSchedulePanel({
                 <CostInstallmentTable
                   installments={costInstallments}
                   canEdit={canEdit}
+                  ivaRate={ivaRate}
                   freelancerInvoices={freelancerInvoices}
                   onUpdate={onUpdate}
                   onDelete={onDelete}
