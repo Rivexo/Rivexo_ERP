@@ -30,7 +30,7 @@ export default async function ErpProjectsPage() {
                 <th className="px-4 py-2 text-left font-medium">Proyecto</th>
                 <th className="px-4 py-2 text-left font-medium">Cuenta</th>
                 <th className="px-4 py-2 text-left font-medium">Fase</th>
-                <th className="px-4 py-2 text-right font-medium">Presupuesto</th>
+                <th className="px-4 py-2 text-right font-medium">Presupuesto (c/IVA)</th>
                 <th className="px-4 py-2 text-right font-medium">Cobrado</th>
                 <th className="px-4 py-2 text-right font-medium">Por cobrar</th>
                 <th className="px-4 py-2 text-right font-medium">Vencido</th>
@@ -52,7 +52,7 @@ export default async function ErpProjectsPage() {
                       "—"
                     )}
                   </td>
-                  <td className="px-4 py-2 text-right tabular-nums">{formatCurrency(p.budget_sold)}</td>
+                  <td className="px-4 py-2 text-right tabular-nums">{formatCurrency(p.budget_sold_with_iva)}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{formatCurrency(p.collected)}</td>
                   <td className="px-4 py-2 text-right tabular-nums">{formatCurrency(p.receivable)}</td>
                   <td className="px-4 py-2 text-right tabular-nums">

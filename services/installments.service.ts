@@ -391,6 +391,7 @@ export type AccountsReceivableRow = {
   account_name: string;
   label: string;
   amount: number;
+  gross_amount: number;
   due_date: string | null;
   is_overdue: boolean;
 };
@@ -399,7 +400,9 @@ export async function getAccountsReceivable(): Promise<AccountsReceivableRow[]> 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("deal_payment_installments")
-    .select("id, deal_id, project_id, label, amount, due_date, status, deal:deals(name, stage:pipeline_stages(is_won), account:accounts(name))")
+    .select(
+      "id, deal_id, project_id, label, amount, due_date, status, deal:deals(name, iva_rate, stage:pipeline_stages(is_won), account:accounts(name)), project:projects(financials:project_financials(iva_rate))",
+    )
     .neq("status", "paid")
     .order("due_date", { ascending: true, nullsFirst: false });
   if (error) throw error;
@@ -412,21 +415,26 @@ export async function getAccountsReceivable(): Promise<AccountsReceivableRow[]> 
     label: string;
     amount: number;
     due_date: string | null;
-    deal: { name: string; stage: { is_won: boolean } | null; account: { name: string } | null } | null;
+    deal: { name: string; iva_rate: number; stage: { is_won: boolean } | null; account: { name: string } | null } | null;
+    project: { financials: { iva_rate: number } | null } | null;
   };
   // Una cuota con project_id ya viene de un proyecto convertido, lo cual exige
   // is_won=true (ver convert_deal_to_project). No depender solo del stage del
   // deal, que puede haber cambiado o no traer el flag por un join incompleto.
   return (data as unknown as Row[])
     .filter((row) => row.project_id != null || row.deal?.stage?.is_won === true)
-    .map((row) => ({
-      id: row.id,
-      deal_id: row.deal_id,
-      deal_name: row.deal?.name ?? "—",
-      account_name: row.deal?.account?.name ?? "—",
-      label: row.label,
-      amount: row.amount,
-      due_date: row.due_date,
-      is_overdue: !!row.due_date && row.due_date < today,
-    }));
+    .map((row) => {
+      const ivaRate = row.project?.financials?.iva_rate ?? row.deal?.iva_rate ?? 0.16;
+      return {
+        id: row.id,
+        deal_id: row.deal_id,
+        deal_name: row.deal?.name ?? "—",
+        account_name: row.deal?.account?.name ?? "—",
+        label: row.label,
+        amount: row.amount,
+        gross_amount: calcIvaBreakdown(row.amount, ivaRate).total,
+        due_date: row.due_date,
+        is_overdue: !!row.due_date && row.due_date < today,
+      };
+    });
 }

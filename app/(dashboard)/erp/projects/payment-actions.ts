@@ -17,7 +17,7 @@ import {
   linkInvoiceToInstallment,
 } from "@/services/installments.service";
 import { createInvoiceFromInstallment } from "@/services/customer-invoices.service";
-import { updateProjectPaymentConfig, updateProjectBudget, getProject } from "@/services/projects.service";
+import { updateProjectPaymentConfig, getProject } from "@/services/projects.service";
 
 function revalidate(projectId: string) {
   revalidatePath(`/projects/${projectId}`);
@@ -25,11 +25,6 @@ function revalidate(projectId: string) {
   revalidatePath("/erp/projects");
   revalidatePath("/erp/revenues");
   revalidatePath("/erp/accounting/receivables");
-}
-
-export async function updateProjectBudgetAction(projectId: string, budgetSold: number): Promise<void> {
-  await updateProjectBudget(projectId, budgetSold);
-  revalidate(projectId);
 }
 
 export async function setPaymentTypeAction(

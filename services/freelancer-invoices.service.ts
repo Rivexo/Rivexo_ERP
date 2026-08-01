@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 import type { FreelancerInvoiceInput } from "@/lib/validations/freelancer-invoice";
 import { postJournalEntry } from "@/services/accounting.service";
+import { calcIvaBreakdown } from "@/lib/iva";
 
 export type FreelancerInvoice = Database["public"]["Tables"]["freelancer_invoices"]["Row"];
 
@@ -92,6 +93,7 @@ export type AccountsPayableRow = {
   description: string;
   project_name: string;
   amount: number;
+  gross_amount: number;
   due_date: string | null;
   is_overdue: boolean;
 };
@@ -103,25 +105,28 @@ export async function getAccountsPayable(): Promise<AccountsPayableRow[]> {
   const [invoicesResult, costResult] = await Promise.all([
     supabase
       .from("freelancer_invoices")
-      .select("id, freelancer_name, amount, due_date, project:projects(name)")
+      .select("id, freelancer_name, amount, due_date, project:projects(name, financials:project_financials(iva_rate))")
       .eq("status", "pending"),
     supabase
       .from("project_cost_installments")
-      .select("id, label, amount, due_date, freelancer_invoice_id, project:projects(name)")
+      .select(
+        "id, label, amount, due_date, freelancer_invoice_id, project:projects(name, financials:project_financials(iva_rate))",
+      )
       .eq("status", "pending"),
   ]);
 
   if (invoicesResult.error) throw invoicesResult.error;
   if (costResult.error) throw costResult.error;
 
-  type InvoiceRow = { id: string; freelancer_name: string; amount: number; due_date: string | null; project: { name: string } | null };
+  type ProjectRef = { name: string; financials: { iva_rate: number } | null };
+  type InvoiceRow = { id: string; freelancer_name: string; amount: number; due_date: string | null; project: ProjectRef | null };
   type CostRow = {
     id: string;
     label: string;
     amount: number;
     due_date: string | null;
     freelancer_invoice_id: string | null;
-    project: { name: string } | null;
+    project: ProjectRef | null;
   };
 
   // Una cuota de costo ligada a una factura de freelancer representa el mismo
@@ -140,6 +145,7 @@ export async function getAccountsPayable(): Promise<AccountsPayableRow[]> {
     description: row.freelancer_name,
     project_name: row.project?.name ?? "—",
     amount: row.amount,
+    gross_amount: calcIvaBreakdown(row.amount, row.project?.financials?.iva_rate ?? 0.16).total,
     due_date: row.due_date,
     is_overdue: !!row.due_date && row.due_date < today,
   }));
@@ -150,6 +156,7 @@ export async function getAccountsPayable(): Promise<AccountsPayableRow[]> {
     description: row.label,
     project_name: row.project?.name ?? "—",
     amount: row.amount,
+    gross_amount: calcIvaBreakdown(row.amount, row.project?.financials?.iva_rate ?? 0.16).total,
     due_date: row.due_date,
     is_overdue: !!row.due_date && row.due_date < today,
   }));

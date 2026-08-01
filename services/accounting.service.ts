@@ -142,7 +142,7 @@ export async function getBalanceSheet(asOfDate: string): Promise<BalanceSheet> {
   const entryIds = await entryIdsInRange(supabase, null, asOfDate);
 
   const receivables = await getAccountsReceivable();
-  const accountsReceivable = receivables.reduce((sum, r) => sum + r.amount, 0);
+  const accountsReceivable = receivables.reduce((sum, r) => sum + r.gross_amount, 0);
 
   if (entryIds.length === 0) {
     return {

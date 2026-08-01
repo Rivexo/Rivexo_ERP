@@ -14,24 +14,20 @@ export default async function AccountsReceivablePage() {
   const profile = await getCurrentProfile();
   if (!profile || !canAccessErp(profile.role)) redirect("/");
 
-  const [rows, timeline] = await Promise.all([getAccountsReceivable(), getIncomeTimeline(2)]);
-  const total = rows.reduce((sum, r) => sum + r.amount, 0);
-  const overdueTotal = rows.filter((r) => r.is_overdue).reduce((sum, r) => sum + r.amount, 0);
+  const [allRows, timeline] = await Promise.all([getAccountsReceivable(), getIncomeTimeline(2)]);
+  // Contabilidad solo ve lo ya vencido — el saldo total pendiente (vencido o
+  // no) se ve en el portal financiero del proyecto (/erp/projects/[id]).
+  const rows = allRows.filter((r) => r.is_overdue);
+  const overdueTotal = rows.reduce((sum, r) => sum + r.gross_amount, 0);
   const realTimeline = timeline.filter((row) => !row.is_projected);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Cuentas por Cobrar" description="Cuotas pendientes de proyectos de contado y financiados" />
+      <PageHeader title="Cuentas por Cobrar" description="Cuotas vencidas de proyectos de contado y financiados" />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Total por cobrar</p>
-          <p className="text-2xl font-semibold">{formatCurrency(total)}</p>
-        </div>
-        <div className="rounded-lg border p-4">
-          <p className="text-sm text-muted-foreground">Vencido</p>
-          <p className="text-2xl font-semibold text-destructive">{formatCurrency(overdueTotal)}</p>
-        </div>
+      <div className="rounded-lg border p-4">
+        <p className="text-sm text-muted-foreground">Total vencido</p>
+        <p className="text-2xl font-semibold text-destructive">{formatCurrency(overdueTotal)}</p>
       </div>
 
       <MonthlyForecastChart
@@ -49,7 +45,7 @@ export default async function AccountsReceivablePage() {
       />
 
       {rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No hay cuotas pendientes de cobro.</p>
+        <p className="text-sm text-muted-foreground">No hay cuotas vencidas.</p>
       ) : (
         <Table>
           <TableHeader>
@@ -57,7 +53,7 @@ export default async function AccountsReceivablePage() {
               <TableHead>Cuenta</TableHead>
               <TableHead>Deal / Proyecto</TableHead>
               <TableHead>Cuota</TableHead>
-              <TableHead>Monto</TableHead>
+              <TableHead>Monto (c/IVA)</TableHead>
               <TableHead>Vencimiento</TableHead>
               <TableHead />
             </TableRow>
@@ -72,11 +68,13 @@ export default async function AccountsReceivablePage() {
                   </Link>
                 </TableCell>
                 <TableCell>{row.label}</TableCell>
-                <TableCell>{formatCurrency(row.amount)}</TableCell>
+                <TableCell>{formatCurrency(row.gross_amount)}</TableCell>
                 <TableCell>
                   {row.due_date ? new Date(`${row.due_date}T00:00:00`).toLocaleDateString("es-MX") : "—"}
                 </TableCell>
-                <TableCell>{row.is_overdue && <Badge variant="destructive">Vencida</Badge>}</TableCell>
+                <TableCell>
+                  <Badge variant="destructive">Vencida</Badge>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

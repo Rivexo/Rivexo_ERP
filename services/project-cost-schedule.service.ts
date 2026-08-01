@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
 import type { CostInstallmentInput } from "@/lib/validations/cost-installment";
-import { postJournalEntry } from "@/services/accounting.service";
+import { postJournalEntry, type JournalLineInput } from "@/services/accounting.service";
+import { calcIvaBreakdown } from "@/lib/iva";
 
 export type ProjectCostInstallment = Database["public"]["Tables"]["project_cost_installments"]["Row"];
 
@@ -103,11 +104,15 @@ export async function generateCostScheduleFromCollection(projectId: string, deal
   if (error) throw error;
 }
 
+// Al igual que installments.service.ts::updateInstallmentStatus, el asiento se
+// postea en bruto (con IVA) para que "Pagado" cuadre con "Costo total" (que
+// ahora se muestra con IVA). El IVA que pagamos al proveedor es acreditable
+// (1150), no un gasto — se descuenta después contra el IVA trasladado (2200).
 export async function updateCostInstallmentStatus(id: string, status: "pending" | "paid"): Promise<void> {
   const supabase = await createClient();
   const { data: current, error: currentError } = await supabase
     .from("project_cost_installments")
-    .select("amount, status, label, payee_type")
+    .select("amount, status, label, payee_type, project_id")
     .eq("id", id)
     .single();
   if (currentError) throw currentError;
@@ -120,18 +125,31 @@ export async function updateCostInstallmentStatus(id: string, status: "pending" 
 
   if (current.status === status) return;
 
+  let ivaRate = 0.16;
+  if (current.project_id) {
+    const { data: fin } = await supabase
+      .from("project_financials")
+      .select("iva_rate")
+      .eq("project_id", current.project_id)
+      .maybeSingle();
+    if (fin?.iva_rate != null) ivaRate = fin.iva_rate;
+  }
+  const { ivaAmount, total } = calcIvaBreakdown(current.amount, ivaRate);
+
   const expenseAccountCode = current.payee_type === "employee" ? "5600" : "5500";
   const today = new Date().toISOString().slice(0, 10);
+
+  const lines: JournalLineInput[] = [];
   if (status === "paid") {
-    await postJournalEntry(today, `Pago a proveedor: ${current.label}`, "cost_installment_payment", id, [
-      { accountCode: expenseAccountCode, debit: current.amount },
-      { accountCode: "1100", credit: current.amount },
-    ]);
+    lines.push({ accountCode: expenseAccountCode, debit: current.amount });
+    if (ivaAmount > 0) lines.push({ accountCode: "1150", debit: ivaAmount });
+    lines.push({ accountCode: "1100", credit: total });
+    await postJournalEntry(today, `Pago a proveedor: ${current.label}`, "cost_installment_payment", id, lines);
   } else {
-    await postJournalEntry(today, `Reversión de pago: ${current.label}`, "cost_installment_payment_reversal", id, [
-      { accountCode: "1100", debit: current.amount },
-      { accountCode: expenseAccountCode, credit: current.amount },
-    ]);
+    lines.push({ accountCode: "1100", debit: total });
+    lines.push({ accountCode: expenseAccountCode, credit: current.amount });
+    if (ivaAmount > 0) lines.push({ accountCode: "1150", credit: ivaAmount });
+    await postJournalEntry(today, `Reversión de pago: ${current.label}`, "cost_installment_payment_reversal", id, lines);
   }
 }
 
