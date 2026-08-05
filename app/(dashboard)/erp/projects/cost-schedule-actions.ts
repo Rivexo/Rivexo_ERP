@@ -11,6 +11,7 @@ import {
   deleteAllCostInstallments,
   generateCostScheduleFromCollection,
   linkFreelancerInvoiceToCostInstallment,
+  uploadCostInstallmentInvoice,
 } from "@/services/project-cost-schedule.service";
 
 function revalidate(projectId: string) {
@@ -80,5 +81,21 @@ export async function linkFreelancerInvoiceAction(
   invoiceId: string | null,
 ): Promise<void> {
   await linkFreelancerInvoiceToCostInstallment(installmentId, invoiceId);
+  revalidate(projectId);
+}
+
+export async function uploadCostInstallmentInvoiceAction(
+  projectId: string,
+  installmentId: string,
+  formData: FormData,
+): Promise<void> {
+  const pdf = formData.get("pdf");
+  const xml = formData.get("xml");
+  await uploadCostInstallmentInvoice(
+    installmentId,
+    projectId,
+    pdf instanceof File ? pdf : null,
+    xml instanceof File ? xml : null,
+  );
   revalidate(projectId);
 }

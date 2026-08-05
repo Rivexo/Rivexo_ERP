@@ -1366,6 +1366,8 @@ export type Database = {
           employee_id: string | null
           freelancer_invoice_id: string | null
           id: string
+          invoice_pdf_path: string | null
+          invoice_xml_path: string | null
           label: string
           notes: string | null
           paid_at: string | null
@@ -1383,6 +1385,8 @@ export type Database = {
           employee_id?: string | null
           freelancer_invoice_id?: string | null
           id?: string
+          invoice_pdf_path?: string | null
+          invoice_xml_path?: string | null
           label: string
           notes?: string | null
           paid_at?: string | null
@@ -1400,6 +1404,8 @@ export type Database = {
           employee_id?: string | null
           freelancer_invoice_id?: string | null
           id?: string
+          invoice_pdf_path?: string | null
+          invoice_xml_path?: string | null
           label?: string
           notes?: string | null
           paid_at?: string | null

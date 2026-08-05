@@ -2,7 +2,20 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, HandCoins, Link, Link2Off, Pencil, Plus, RotateCcw, Trash2, Undo2, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  FileUp,
+  HandCoins,
+  Link,
+  Link2Off,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Trash2,
+  Undo2,
+  Users,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -129,6 +142,69 @@ function CostInstallmentDialog({
   );
 }
 
+function UploadCostInstallmentInvoiceDialog({
+  installment,
+  trigger,
+  onUpload,
+}: {
+  installment: ProjectCostInstallmentWithRelations;
+  trigger: React.ReactNode;
+  onUpload: (installmentId: string, formData: FormData) => Promise<void>;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const formData = new FormData(formRef.current!);
+    setIsSubmitting(true);
+    try {
+      await onUpload(installment.id, formData);
+      formRef.current?.reset();
+      setOpen(false);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ocurrió un error");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={trigger as React.ReactElement} />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Factura del proveedor: {installment.label}</DialogTitle>
+        </DialogHeader>
+        <form ref={formRef} onSubmit={submit} className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Respaldo documental, no es obligatoria para marcar la cuota como pagada.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="cost-invoice-pdf">PDF</Label>
+            <Input id="cost-invoice-pdf" name="pdf" type="file" accept="application/pdf" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="cost-invoice-xml">XML (CFDI)</Label>
+            <Input id="cost-invoice-xml" name="xml" type="file" accept=".xml,text/xml,application/xml" />
+          </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <DialogFooter>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Subiendo..." : "Subir"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function CostInstallmentTable({
   installments,
   canEdit,
@@ -138,6 +214,7 @@ function CostInstallmentTable({
   onDelete,
   onLinkFreelancerInvoice,
   onUpdateStatus,
+  onUploadInvoice,
 }: {
   installments: ProjectCostInstallmentWithRelations[];
   canEdit: boolean;
@@ -147,6 +224,7 @@ function CostInstallmentTable({
   onDelete: (id: string) => Promise<void>;
   onLinkFreelancerInvoice?: (installmentId: string, invoiceId: string | null) => Promise<void>;
   onUpdateStatus?: (id: string, status: "pending" | "paid") => Promise<void>;
+  onUploadInvoice?: (installmentId: string, formData: FormData) => Promise<void>;
 }) {
   const router = useRouter();
   const today = new Date().toISOString().slice(0, 10);
@@ -202,6 +280,7 @@ function CostInstallmentTable({
             <TableHead>Total c/IVA</TableHead>
             <TableHead>Vencimiento</TableHead>
             <TableHead>Estatus</TableHead>
+            <TableHead>Factura (archivo)</TableHead>
             <TableHead>Factura freelancer</TableHead>
             {canEdit && <TableHead />}
           </TableRow>
@@ -258,7 +337,31 @@ function CostInstallmentTable({
                       </Badge>
                     )}
                     {isOverdue && <Badge variant="destructive">Vencida</Badge>}
+                    {inst.status === "paid" && !inst.invoice_pdf_path && !inst.invoice_xml_path && (
+                      <Badge variant="outline" className="gap-1 text-amber-600 border-amber-600/40" title="Pagada sin factura adjunta">
+                        <AlertTriangle className="size-3" /> Sin factura
+                      </Badge>
+                    )}
                   </div>
+                </TableCell>
+                <TableCell>
+                  {inst.invoice_pdf_path || inst.invoice_xml_path ? (
+                    <Badge variant="secondary" className="gap-1">
+                      <CheckCircle2 className="size-3" /> Factura
+                    </Badge>
+                  ) : canEdit && onUploadInvoice ? (
+                    <UploadCostInstallmentInvoiceDialog
+                      installment={inst}
+                      onUpload={onUploadInvoice}
+                      trigger={
+                        <Button variant="outline" size="sm" className="h-7 gap-1 text-xs">
+                          <FileUp className="size-3" /> Subir factura
+                        </Button>
+                      }
+                    />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   {inst.freelancer_invoice ? (
@@ -348,6 +451,7 @@ export function CostSchedulePanel({
   onGenerateSchedule,
   onLinkFreelancerInvoice,
   onUpdateStatus,
+  onUploadInvoice,
 }: {
   financials: ProjectFinancials | null;
   costInstallments: ProjectCostInstallmentWithRelations[];
@@ -361,6 +465,7 @@ export function CostSchedulePanel({
   onGenerateSchedule: () => Promise<void>;
   onLinkFreelancerInvoice?: (installmentId: string, invoiceId: string | null) => Promise<void>;
   onUpdateStatus?: (id: string, status: "pending" | "paid") => Promise<void>;
+  onUploadInvoice?: (installmentId: string, formData: FormData) => Promise<void>;
 }) {
   const router = useRouter();
   const [costTab, setCostTab] = useState<"freelancer" | "employee">("freelancer");
@@ -513,6 +618,7 @@ export function CostSchedulePanel({
                 onDelete={onDelete}
                 onLinkFreelancerInvoice={onLinkFreelancerInvoice}
                 onUpdateStatus={onUpdateStatus}
+                onUploadInvoice={onUploadInvoice}
               />
             </div>
           ) : (
@@ -539,6 +645,7 @@ export function CostSchedulePanel({
                   onDelete={onDelete}
                   onLinkFreelancerInvoice={onLinkFreelancerInvoice}
                   onUpdateStatus={onUpdateStatus}
+                  onUploadInvoice={onUploadInvoice}
                 />
               )}
             </div>

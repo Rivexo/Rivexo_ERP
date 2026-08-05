@@ -153,6 +153,43 @@ export async function updateCostInstallmentStatus(id: string, status: "pending" 
   }
 }
 
+// Factura del freelancer/proveedor (PDF+XML) como respaldo documental de la
+// cuota de costo. No es obligatoria ni bloquea "marcar pagada" — el mecanismo
+// de pago a proveedores no siempre corre en función del cobro al cliente, así
+// que la factura puede llegar antes, después o nunca sin frenar el flujo.
+export async function uploadCostInstallmentInvoice(
+  installmentId: string,
+  projectId: string,
+  pdfFile?: File | null,
+  xmlFile?: File | null,
+): Promise<void> {
+  const supabase = await createClient();
+  const updates: { invoice_pdf_path?: string; invoice_xml_path?: string } = {};
+
+  if (pdfFile && pdfFile.size > 0) {
+    const path = `${projectId}/${installmentId}/factura.pdf`;
+    const { error } = await supabase.storage
+      .from("payments")
+      .upload(path, pdfFile, { contentType: "application/pdf", upsert: true });
+    if (error) throw error;
+    updates.invoice_pdf_path = path;
+  }
+
+  if (xmlFile && xmlFile.size > 0) {
+    const path = `${projectId}/${installmentId}/factura.xml`;
+    const { error } = await supabase.storage
+      .from("payments")
+      .upload(path, xmlFile, { contentType: "text/xml", upsert: true });
+    if (error) throw error;
+    updates.invoice_xml_path = path;
+  }
+
+  if (Object.keys(updates).length > 0) {
+    const { error } = await supabase.from("project_cost_installments").update(updates).eq("id", installmentId);
+    if (error) throw error;
+  }
+}
+
 export async function linkFreelancerInvoiceToCostInstallment(
   installmentId: string,
   invoiceId: string | null,

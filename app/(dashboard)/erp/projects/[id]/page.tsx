@@ -42,6 +42,7 @@ import {
   generateCostScheduleAction,
   deleteAllCostInstallmentsAction,
   linkFreelancerInvoiceAction,
+  uploadCostInstallmentInvoiceAction,
 } from "../cost-schedule-actions";
 
 export default async function ErpProjectFinancePage({ params }: { params: Promise<{ id: string }> }) {
@@ -186,6 +187,7 @@ export default async function ErpProjectFinancePage({ params }: { params: Promis
         onGenerateSchedule={generateCostScheduleAction.bind(null, id, project.deal_id)}
         onLinkFreelancerInvoice={linkFreelancerInvoiceAction.bind(null, id)}
         onUpdateStatus={updateCostInstallmentStatusAction.bind(null, id)}
+        onUploadInvoice={uploadCostInstallmentInvoiceAction.bind(null, id)}
       />
 
       <CollectionVsCostTimeline rows={cashflow} />
